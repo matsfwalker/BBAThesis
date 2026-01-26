@@ -1,7 +1,7 @@
 import pandas as pd
 import datetime as dt
 import statsmodels.api as sm
-from typing import Dict, Tuple, List, Union, Iterable, Optional, Sequence
+from typing import Dict, Tuple, List, Union, Optional, Sequence
 from configs import CONFIG, CONFIGURATION, FILENAMES
 
 
