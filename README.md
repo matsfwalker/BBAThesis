@@ -3,6 +3,8 @@
 ## ESADE BBA 2026
 *Mats Walker, Frederik Tiefenbacher, Laurenz Köpp*
 
+## Note that this project is work-in-progress and subject to change
+
 This repository contains the code for the empirical analysis of the Bachelor's thesis *"Stability of Factor-Loadings in the Fama-French 5-Factors Model"*. The thesis examines the evolution of the factor-loadings (betas) of industry portfolios in the US from 2008-2026 with a special emphasis on the aftermath of the COVID pandemic.
 
 ## Research Question
