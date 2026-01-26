@@ -2,7 +2,7 @@ import pandas as pd
 import pandas_datareader.data as web
 import wrds  # Wharton Research Data Services
 import datetime as dt
-from typing import Dict, Tuple, List, Any, Union
+from typing import Dict, Tuple, Any, Union
 import warnings
 from configs import CONFIG, CONFIGURATION, FILENAMES
 
