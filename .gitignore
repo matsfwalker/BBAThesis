@@ -6,6 +6,8 @@ __pycache__/
 # Jupyter & pyproject files
 .ipynb_checkpoints/
 pyproject.toml
+.mypy_cache
+.ruff_cache
 
 # Raw and processed data
 data/raw/
