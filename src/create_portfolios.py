@@ -608,7 +608,7 @@ def create_portfolios_and_returns(
     return industry_marketcap_portfolio_returns, industry_marketcap_portfolios_filtered
 
 
-def run_pipeline(config: CONFIGURATION) -> None:
+def create_save_portfolios(config: CONFIGURATION) -> None:
     """
     Function to run the entire portfolio creation and return calculation pipeline.
 
@@ -634,4 +634,4 @@ def run_pipeline(config: CONFIGURATION) -> None:
 
 
 if __name__ == "__main__":
-    run_pipeline(CONFIG)
+    create_save_portfolios(CONFIG)

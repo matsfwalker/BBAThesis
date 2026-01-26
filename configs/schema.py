@@ -4,6 +4,8 @@ from typing import Literal, Optional, Sequence, Union, List, Dict
 import pandas as pd
 from pathlib import Path
 import re
+from dotenv import load_dotenv
+import os
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 
@@ -29,7 +31,7 @@ class BASIC_CONFIG_CLASS:
         suffix: str,
         date_pattern: str = r"\d{4}-\d{2}-\d{2}",
     ) -> Path:
-        """
+        r"""
         Returns the most recent file matching f"{directory}/{stem}_YYYY-MM-DD{suffix}".
 
         Parameters
@@ -250,10 +252,6 @@ class CONFIGURATION:
     # Paths
     paths: PATH_CONFIG
 
-    # WRDS login
-    WRDS_USERNAME: Optional[str]
-    WRDS_PASSWORD: Optional[str]
-
     # Constants
     FACTORS_LIB: str
     FACTORS_DATA_SOURCE: str
@@ -330,14 +328,22 @@ class CONFIGURATION:
             raise ValueError(
                 "THRESHOLD_MISSING_SHARESOUTSTANDING must be between 0 and 1"
             )
-    
-        if self.WRDS_USERNAME is None:
-            raise ValueError(
-                "WRDS Username is not provided. Please provide this in a .env file to access the database"
-            )
 
-        if self.WRDS_PASSWORD is None:
-            pass # As this is not provided, it is not necessarily a problem
+    def get_wrds_data(self)-> Dict[str, str]:
+        load_dotenv(PROJECT_ROOT / "configs/.env")
+        username: str = os.getenv("WRDS_USERNAME")
+        password: str = os.getenv("WRDS_PASSWORD")
+
+        if username is None:
+            raise ValueError("Username for WRDS is None")
+
+        if password is None:
+            pass # Not used at the moment
+        return {
+            "username": username,
+            "password": password
+        }
+    
 
 # Plotting configurations
 @dataclass(frozen=True, slots=True)

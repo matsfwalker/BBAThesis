@@ -147,7 +147,9 @@ def download_data(config: CONFIGURATION) -> EntireData:
         5 pd.DataFrames containing the entire data"""
 
     # Connect to wrds Databank
-    db = wrds.Connection(wrds_username=config.WRDS_USERNAME, autoconnect=True)
+    wrds_credentials: Dict[str, str] = config.get_wrds_data()
+
+    db = wrds.Connection(wrds_username=wrds_credentials["username"], autoconnect=True)
     pd.set_option("future.no_silent_downcasting", True)
 
     # Download fama french data

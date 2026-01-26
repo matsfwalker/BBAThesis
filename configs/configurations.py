@@ -2,21 +2,13 @@
 # This are constants that may change depending on the build and are not essential for the core functionality.
 
 import datetime as dt
-import pandas as pd
-from dotenv import load_dotenv
-import os
+
 
 
 from .schema import CONFIGURATION, PLOTTING_CONFIGURATIONS
-from .constants import FACTORS_LIB, FACTORS_DATA_SOURCE
+from .constants import FACTORS_LIB, FACTORS_DATA_SOURCE, START_PANDEMIC, END_PANDEMIC
 from .paths import PATHCONFIG
 
-load_dotenv()
-
-
-# Information for covid 19
-START_PANDEMIC: pd.Timestamp = pd.Timestamp("2019-12-01")
-END_PANDEMIC: pd.Timestamp = pd.Timestamp("2021-06-01")
 
 PLOTTING_CONFIG = PLOTTING_CONFIGURATIONS(
     TIMESPANS_TO_PLOT=[
@@ -33,9 +25,6 @@ PLOTTING_CONFIG = PLOTTING_CONFIGURATIONS(
 CONFIG = CONFIGURATION(
     # Paths
     paths=PATHCONFIG,
-    # WRDS login
-    WRDS_USERNAME=os.getenv("WRDS_USERNAME"),
-    WRDS_PASSWORD=os.getenv("WRDS_PASSWORD"),
     # Constants
     FACTORS_LIB=FACTORS_LIB,
     FACTORS_DATA_SOURCE=FACTORS_DATA_SOURCE,
