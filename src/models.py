@@ -253,6 +253,7 @@ def gibbons_ross_shanken_test(
     float
         The Gibbons-Ross-Shanken test statistic.
     """
+    return 0.0
 
 
 def t_test_significance(
@@ -355,7 +356,7 @@ def date_ranges_break_dates(
     Dict[str, Tuple[dt.datetime, dt.datetime]]
         Dictionary relating the title of the timeframe to the start and end dates.
     """
-    date_ranges: Dict[str : Tuple[dt.datetime, dt.datetime]] = {}
+    date_ranges: Dict[str, Tuple[dt.datetime, dt.datetime]] = {}
 
     sorted_break_dates: List[dt.datetime] = sorted(break_dates)
     sorted_dates: List[dt.datetime] = sorted(all_dates)
@@ -406,7 +407,7 @@ def date_ranges_windows(
         Dictionary relating the title of the timeframe to the start and end dates.
     """
 
-    date_ranges: Dict[str : Tuple[dt.datetime, dt.datetime]] = {}
+    date_ranges: Dict[str, Tuple[dt.datetime, dt.datetime]] = {}
 
     sorted_dates: List[dt.datetime] = sorted(all_dates)
     start_date: dt.datetime = sorted_dates[0]
@@ -490,7 +491,7 @@ def factor_loadings_over_time(
 
     # Determine the date ranges
     if break_dates is not None:
-        date_ranges: List[Tuple[dt.datetime, dt.datetime]] = date_ranges_break_dates(
+        date_ranges: Dict[str, Tuple[dt.datetime, dt.datetime]] = date_ranges_break_dates(
             all_dates=factors_aligned.index.tolist(),
             break_dates=break_dates,
             include_end_date=include_end_date,

@@ -18,6 +18,7 @@ class BASIC_CONFIG_CLASS:
 
     def get_directory(
         self,
+        type_: ALLOWED_TYPE
     ) -> Path:
         raise NotImplementedError
 
@@ -91,7 +92,7 @@ class BASIC_CONFIG_CLASS:
         return directory / f"{stem}_{type_}_{date}{suffix}"
 
     def create_filename_with_date(
-        self, stem: str, type_: str, suffix: str, date_pattern: str = "%Y-%m-%d"
+        self, stem: str, type_: ALLOWED_TYPE, suffix: str, date_pattern: str = "%Y-%m-%d"
     ) -> Path:
         """
         Function to create a path for a new file with a date identifier.
@@ -118,7 +119,7 @@ class BASIC_CONFIG_CLASS:
 
         return directory / f"{stem}_{self.meta_info}{suffix}"
 
-    def read(self, stem: str, type_: str, date: Optional[dt.datetime]) -> Path:
+    def read(self, stem: str, type_: ALLOWED_TYPE, date: Optional[dt.datetime]) -> Path:
         if date is None:
             return self.get_latest(stem=stem, suffix=self.suffix, type_=type_)
         else:
@@ -167,9 +168,6 @@ class PATH_ANALYSIS(BASIC_CONFIG_CLASS):
 
     def results_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.read(stem=stem, type_="results", date=date)
-
-    def sql_query(self, stem: str) -> Path:
-        return self.SQL_DIR / f"{stem}.sql"
 
 
 # Paths for the entire program (all access)

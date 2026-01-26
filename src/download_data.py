@@ -69,7 +69,7 @@ def download_prices_daily_wrds(
     # Unpack the config
     start_date: dt.datetime = config.START_DATE_FACTORS_DOWNLOAD - dt.timedelta(days=31)
     end_date: dt.datetime = config.END_DATE_FACTORS_DOWNLOAD - dt.timedelta(days=31)
-    price_query_params: List[str, str] = (
+    price_query_params: Tuple[str, str] = (
         start_date.strftime("%Y-%m-%d"),
         end_date.strftime("%Y-%m-%d"),
     )
