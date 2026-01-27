@@ -28,7 +28,7 @@ CONFIG = CONFIGURATION(
     FACTORS_DATA_SOURCE=FACTORS_DATA_SOURCE,
     # Data downloading configs
     START_DATE_FACTORS_DOWNLOAD=dt.datetime(2008, 1, 1),
-    END_DATE_FACTORS_DOWNLOAD=dt.datetime.today(),
+    END_DATE_FACTORS_DOWNLOAD=dt.datetime.now(),
     # Data-cleaning configs
     THRESHOLD_MISSING_SHARESOUTSTANDING=0.5,  # Relative threshold of missing sharesoutstanding to drop a ticker
     # Portfolio creation configs

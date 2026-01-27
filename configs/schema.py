@@ -14,11 +14,14 @@ type ALLOWED_TYPE = Literal["raw", "processed", "portfolios", "results"]
 
 
 # Basic Configuration parent class
-class BASIC_CONFIG_CLASS:
+class BasePathConfig:
     # General info for all files
     suffix: str = ".csv"
-    meta_info: str = dt.datetime.today().strftime("%Y-%m-%d")
 
+    @property
+    def meta_info(self) -> str:
+        return dt.datetime.today().strftime("%Y-%m-%d")
+    
     def get_directory(self, type_: ALLOWED_TYPE) -> Path:
         raise NotImplementedError
 
@@ -26,11 +29,11 @@ class BASIC_CONFIG_CLASS:
         self,
         stem: str,
         type_: ALLOWED_TYPE,
-        suffix: str,
+        suffix: Optional[str] = None,
         date_pattern: str = r"\d{4}-\d{2}-\d{2}",
     ) -> Path:
         r"""
-        Returns the most recent file matching f"{directory}/{stem}_YYYY-MM-DD{suffix}".
+        Returns the file matching f"{directory}/{stem}_{type_}_YYYY-MM-DD{suffix}".
 
         Parameters
         ----------
@@ -38,22 +41,24 @@ class BASIC_CONFIG_CLASS:
             Stem/name of the file
         type_ : ALLOWED_TYPE
             Type of the file
-        suffix : str
-            Suffix/filetype of the file (include .)
         date_pattern : str = r"\d{4}-\d{2}-\d{2}"
             Pattern under which the file has been saved
             Default is YYYY-MM-DD
-
+        suffix : Optional[str] = None
+            Suffix/filetype of the file (include .)
+            Default is None, using self.suffix
         Returns
         -------
         Path
             Path to the file
         """
+        if suffix is None:
+            suffix = self.suffix
 
         directory: Path = self.get_directory(type_)
 
         rx = re.compile(
-            rf"^{re.escape(stem)}_(?P<date>{date_pattern}){re.escape(suffix)}$"
+            rf"^{re.escape(stem)}_{re.escape(type_)}_(?P<date>{date_pattern}){re.escape(suffix)}$"
         )
         matches = []
         for p in directory.iterdir():
@@ -62,31 +67,41 @@ class BASIC_CONFIG_CLASS:
                 matches.append((m.group("date"), p))
         if not matches:
             raise FileNotFoundError(
-                f"No files found for pattern {stem}_<date>{suffix} in {directory}"
+                f"No files found for pattern {stem}_{type_}_<date>{suffix} in {directory}"
             )
         # ISO date sorts lexicographically correctly
         return max(matches, key=lambda x: x[0])[1]
 
-    def get_file(self, stem: str, type_: ALLOWED_TYPE, suffix: str, date: str) -> Path:
+    def get_file(
+            self, 
+            stem: str, 
+            type_: ALLOWED_TYPE, 
+            date: str,
+            suffix: Optional[str] = None
+    ) -> Path:
         """
-        Returns the most recent file matching f"{directory}/{stem}_YYYY-MM-DD{suffix}".
+        Returns the most recent file matching f"{stem}_{type_}_{date}{suffix}"".
 
         Parameters
         ----------
         stem : str
             Stem/name of the file
-        type: ALLOWED_TYPE
+        type_: ALLOWED_TYPE
             type of file
-        suffix : str
-            Suffix/filetype of the file (include .)
         date: str
             Date from which to get the file
-
+        suffix : Optional[str] = None
+            Suffix/filetype of the file (include .)
+            Default is None, using self.suffix
         Returns
         -------
         Path
             Path to the file
         """
+
+        if suffix is None:
+            suffix = self.suffix
+
         directory: Path = self.get_directory(type_)
 
         return directory / f"{stem}_{type_}_{date}{suffix}"
@@ -95,8 +110,7 @@ class BASIC_CONFIG_CLASS:
         self,
         stem: str,
         type_: ALLOWED_TYPE,
-        suffix: str,
-        date_pattern: str = "%Y-%m-%d",
+        suffix: Optional[str] = None
     ) -> Path:
         """
         Function to create a path for a new file with a date identifier.
@@ -107,11 +121,9 @@ class BASIC_CONFIG_CLASS:
             Stem/name of the file
         type_ : ALLOWED_TYPE
             Type of the file
-        suffix : str
+        suffix: Optional[str] = None
             Suffix/filetype of the file (include .)
-        date_pattern : str = "%Y-%m-%d"
-            Date patter under which the file should be saved
-            Default is YYYY-MM-DD
+            Defaults to self.suffix
 
         Returns
         -------
@@ -119,25 +131,26 @@ class BASIC_CONFIG_CLASS:
             Path to where the file should be saved
         """
 
+        if suffix is None:
+            suffix = self.suffix
         directory: Path = self.get_directory(type_)
 
-        return directory / f"{stem}_{self.meta_info}{suffix}"
+        return directory / f"{stem}_{type_}_{self.meta_info}{suffix}"
 
-    def read(self, stem: str, type_: ALLOWED_TYPE, date: Optional[dt.datetime]) -> Path:
+    def resolve_path(self, stem: str, type_: ALLOWED_TYPE, date: Optional[dt.datetime]) -> Path:
         if date is None:
-            return self.get_latest(stem=stem, suffix=self.suffix, type_=type_)
+            return self.get_latest(stem=stem, type_=type_)
         else:
             return self.get_file(
-                stem=f"{stem}_raw",
+                stem=stem,
                 type_=type_,
-                date=date.strftime("%Y-%m-%d"),
-                suffix=self.suffix,
+                date=date.strftime("%Y-%m-%d")
             )
 
 
 # Paths for the analysis (only access to model and portfolio datas)
 @dataclass(frozen=True, slots=True)
-class PATH_ANALYSIS(BASIC_CONFIG_CLASS):
+class PATH_ANALYSIS(BasePathConfig):
 
     PORTFOLIO_DATA_DIR: Path
     # Result directories in the RESULTS_DIR
@@ -161,7 +174,7 @@ class PATH_ANALYSIS(BASIC_CONFIG_CLASS):
         )
 
     def portfolios_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
-        return self.read(stem=stem, type_="portfolios", date=date)
+        return self.resolve_path(stem=stem, type_="portfolios", date=date)
 
     def results_out(self, stem: str) -> Path:
         return self.create_filename_with_date(
@@ -171,12 +184,12 @@ class PATH_ANALYSIS(BASIC_CONFIG_CLASS):
         )
 
     def results_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
-        return self.read(stem=stem, type_="results", date=date)
+        return self.resolve_path(stem=stem, type_="results", date=date)
 
 
 # Paths for the entire program (all access)
 @dataclass(frozen=True, slots=True)
-class PATH_CONFIG(BASIC_CONFIG_CLASS):
+class PATH_CONFIG(BasePathConfig):
     # SQL directory
     SQL_DIR: Path
 
@@ -210,7 +223,7 @@ class PATH_CONFIG(BASIC_CONFIG_CLASS):
         )
 
     def raw_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
-        return self.read(stem=stem, type_="raw", date=date)
+        return self.resolve_path(stem=stem, type_="raw", date=date)
 
     def processed_out(self, stem: str) -> Path:
         return self.create_filename_with_date(
@@ -220,7 +233,7 @@ class PATH_CONFIG(BASIC_CONFIG_CLASS):
         )
 
     def processed_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
-        return self.read(stem=stem, type_="processed", date=date)
+        return self.resolve_path(stem=stem, type_="processed", date=date)
 
     def portfolios_out(self, stem: str) -> Path:
         return self.create_filename_with_date(
@@ -230,7 +243,7 @@ class PATH_CONFIG(BASIC_CONFIG_CLASS):
         )
 
     def portfolios_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
-        return self.read(stem=stem, type_="portfolios", date=date)
+        return self.resolve_path(stem=stem, type_="portfolios", date=date)
 
     def results_out(self, stem: str) -> Path:
         return self.create_filename_with_date(
@@ -240,7 +253,7 @@ class PATH_CONFIG(BASIC_CONFIG_CLASS):
         )
 
     def results_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
-        return self.read(stem=stem, type_="results", date=date)
+        return self.resolve_path(stem=stem, type_="results", date=date)
 
     def sql_query(self, stem: str) -> Path:
         return self.SQL_DIR / f"{stem}.sql"
@@ -348,4 +361,4 @@ class CONFIGURATION:
 # Plotting configurations
 @dataclass(frozen=True, slots=True)
 class PLOTTING_CONFIGURATIONS:
-    TIMESPANS_TO_PLOT: List[Dict[str, Union[str, pd.Timestamp]]]
+    TIMESPANS_TO_PLOT: List[Dict[str, Union[str, pd.Timestamp, dt.datetime]]]
