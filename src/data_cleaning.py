@@ -1,10 +1,14 @@
-import pandas as pd
 from typing import Tuple
+
+import pandas as pd
 
 # Import the configurations
 from configs import CONFIG, CONFIGURATION, FILENAMES
 
-type ALL_DATA = Tuple[pd.DataFrame, pd.DataFrame,pd.DataFrame, pd.DataFrame,pd.DataFrame]
+type ALL_DATA = Tuple[
+    pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
+]
+
 
 def download_raw_data(config: CONFIGURATION) -> ALL_DATA:
     """
@@ -387,7 +391,7 @@ def clean_save_data(config: CONFIGURATION) -> None:
         factors_yearly_processed,
         stock_prices_intersected,
         firm_info_processed,
-        sic_desc_processed
+        sic_desc_processed,
     ) = clean_data(config)
 
     save_processed_data(
@@ -396,7 +400,7 @@ def clean_save_data(config: CONFIGURATION) -> None:
         stock_prices_intersected,
         firm_info_processed,
         sic_desc_processed,
-        config
+        config,
     )
 
 

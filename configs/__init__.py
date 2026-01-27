@@ -1,7 +1,7 @@
 # src/configs/__init__.py
-from .schema import CONFIGURATION
-from .paths import ANALYSIS_PATHS, FILENAMES_ANALYSIS, FILENAMES
 from .configurations import CONFIG, PLOTTING_CONFIG
+from .paths import ANALYSIS_PATHS, FILENAMES, FILENAMES_ANALYSIS
+from .schema import CONFIGURATION
 
 __all__ = [
     "CONFIGURATION",  # For type hinting

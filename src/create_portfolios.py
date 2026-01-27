@@ -1,6 +1,8 @@
-import pandas as pd
+from typing import Any, List, Literal, Tuple
+
 import numpy as np
-from typing import Tuple, List, Any, Literal
+import pandas as pd
+
 from configs import CONFIG, CONFIGURATION, FILENAMES
 
 
@@ -187,7 +189,7 @@ def compute_industry_portfolios_sic(
     """
 
     # Unpack the config:
-    sic_level: Literal[1,2,3,4] = config.SIC_LEVEL
+    sic_level: Literal[1, 2, 3, 4] = config.SIC_LEVEL
 
     # Format firms and sic codes according to the level
     firms: pd.DataFrame = format_firms_sic(firm_descr, sic_level)
@@ -306,7 +308,9 @@ def compute_marketcap_portfolios(
         elif num_firms_portfolio is not None:
             cutoff = min(num_firms_portfolio, len(industry_df) // 2)
         else:
-            raise ValueError("Either percentile or number of firms for portfolios needs to be provided.")
+            raise ValueError(
+                "Either percentile or number of firms for portfolios needs to be provided."
+            )
         if cutoff == 0:
             continue
 

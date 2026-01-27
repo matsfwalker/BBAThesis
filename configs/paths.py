@@ -1,6 +1,7 @@
-from pathlib import Path
-from .schema import PATH_CONFIG, PROJECT_ROOT, PATH_ANALYSIS
 from enum import StrEnum
+from pathlib import Path
+
+from .schema import PATH_ANALYSIS, PATH_CONFIG, PROJECT_ROOT
 
 # Paths that are hidden from the PATHCONFIG
 DATA_DIR: Path = PROJECT_ROOT / "data"
@@ -46,7 +47,7 @@ class FILENAMES_ANALYSIS(StrEnum):
 class FILENAMES(StrEnum):
     # Fama French Files
     FF5_factors_monthly = "fama_french_monthly_factors"
-    FF5_factors_yearly  = "fama_french_yearly_factors"
+    FF5_factors_yearly = "fama_french_yearly_factors"
 
     # Stock info files
     Stock_prices = "stock_prices_wrds_monthly_obs_universe"

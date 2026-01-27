@@ -1,11 +1,12 @@
 import datetime as dt
-from dataclasses import dataclass
-from typing import Literal, Optional, Sequence, Union, List, Dict
-import pandas as pd
-from pathlib import Path
-import re
-from dotenv import load_dotenv
 import os
+import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Literal, Optional, Sequence, Union
+
+import pandas as pd
+from dotenv import load_dotenv
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 
@@ -18,10 +19,7 @@ class BASIC_CONFIG_CLASS:
     suffix: str = ".csv"
     meta_info: str = dt.datetime.today().strftime("%Y-%m-%d")
 
-    def get_directory(
-        self,
-        type_: ALLOWED_TYPE
-    ) -> Path:
+    def get_directory(self, type_: ALLOWED_TYPE) -> Path:
         raise NotImplementedError
 
     def get_latest(
@@ -94,7 +92,11 @@ class BASIC_CONFIG_CLASS:
         return directory / f"{stem}_{type_}_{date}{suffix}"
 
     def create_filename_with_date(
-        self, stem: str, type_: ALLOWED_TYPE, suffix: str, date_pattern: str = "%Y-%m-%d"
+        self,
+        stem: str,
+        type_: ALLOWED_TYPE,
+        suffix: str,
+        date_pattern: str = "%Y-%m-%d",
     ) -> Path:
         """
         Function to create a path for a new file with a date identifier.
@@ -329,21 +331,19 @@ class CONFIGURATION:
                 "THRESHOLD_MISSING_SHARESOUTSTANDING must be between 0 and 1"
             )
 
-    def get_wrds_data(self)-> Dict[str, str]:
+    def get_wrds_data(self) -> Dict[str, str]:
         load_dotenv(PROJECT_ROOT / "configs/.env")
-        username: str = os.getenv("WRDS_USERNAME")
-        password: str = os.getenv("WRDS_PASSWORD")
+        username: Optional[str] = os.getenv("WRDS_USERNAME")
+        password: Optional[str] = os.getenv("WRDS_PASSWORD")
 
         if username is None:
             raise ValueError("Username for WRDS is None")
 
         if password is None:
-            pass # Not used at the moment
-        return {
-            "username": username,
-            "password": password
-        }
-    
+            raise ValueError("Password for WRDS is None")
+
+        return {"username": username, "password": password}
+
 
 # Plotting configurations
 @dataclass(frozen=True, slots=True)

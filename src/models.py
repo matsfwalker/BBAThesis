@@ -1,7 +1,9 @@
-import pandas as pd
 import datetime as dt
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
+
+import pandas as pd
 import statsmodels.api as sm
-from typing import Dict, Tuple, List, Union, Optional, Sequence
+
 from configs import CONFIG, CONFIGURATION, FILENAMES
 
 
@@ -514,8 +516,12 @@ def factor_loadings_over_time(
     # Run the regression for each time period
     regression_results: Dict[str, pd.DataFrame] = {
         label: extract_factor_loadings(
-            factors=factors_aligned.loc[start_date:end_date],
-            returns=returns_aligned.loc[start_date:end_date],
+            factors=factors_aligned.loc[
+                cast(Any, start_date) : cast(Any, end_date)
+            ],  # Cast for typechecker
+            returns=returns_aligned.loc[
+                cast(Any, start_date) : cast(Any, end_date)
+            ],  # Cast for typechecker
             rf_label=rf_label,
         )
         for label, (start_date, end_date) in date_ranges.items()
