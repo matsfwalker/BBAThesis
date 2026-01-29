@@ -457,7 +457,6 @@ def calculate_portfolio_returns(
     portfolio_returns = pd.DataFrame(columns=col_names)
 
     for _, row in portfolios_df.iterrows():
-
         # Get the prices and returns for the gvkeys in the portfolio
         gvkeys: List[Any] = row["gvkeys"]
         prices_and_returns_subset: pd.DataFrame = prices_and_returns[

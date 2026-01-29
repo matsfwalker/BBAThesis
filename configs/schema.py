@@ -142,7 +142,6 @@ class BasePathConfig:
 # Paths for the analysis (only access to model and portfolio datas)
 @dataclass(frozen=True, slots=True)
 class PATH_ANALYSIS(BasePathConfig):
-
     PORTFOLIO_DATA_DIR: Path
     # Result directories in the RESULTS_DIR
     RESULT_DATA_DIR: Path

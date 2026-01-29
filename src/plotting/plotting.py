@@ -142,7 +142,9 @@ class PLOTTER:
         ax2.legend()
 
         # Third panel: Distribution of residual returns
-        ax3.set_title("Distribution of Residual Returns", fontsize=self.fontsize_subheader)
+        ax3.set_title(
+            "Distribution of Residual Returns", fontsize=self.fontsize_subheader
+        )
         ax3.hist(
             asset_returns_nona["Residual_returns"], bins=40, color="purple", alpha=0.7
         )
@@ -250,7 +252,9 @@ class PLOTTER:
         ax.set_xticks(xpos)
         ax.set_xticklabels(factors_to_plot, rotation=45, ha="right")
         ax.set_ylabel("Estimated Factor Loading")
-        ax.set_title(f"Forest Plot of Factor Loadings for {name}", fontsize= self.fontsize_header)
+        ax.set_title(
+            f"Forest Plot of Factor Loadings for {name}", fontsize=self.fontsize_header
+        )
 
         plt.tight_layout()
         plt.show()
@@ -353,7 +357,8 @@ class PLOTTER:
 
         title_name = title if title is not None else ", ".join(asset_identifiers)
         ax.set_title(
-            f"Forest Plot of Factor Loadings comparison: {title_name}", fontsize=self.fontsize_header
+            f"Forest Plot of Factor Loadings comparison: {title_name}",
+            fontsize=self.fontsize_header,
         )
 
         ax.legend(title="Asset", frameon=False)
@@ -489,7 +494,6 @@ class PLOTTER:
 
             # Plot each period
             for period in periods:
-
                 beta: float = as_float(betas.at[factor, period])
                 stdev: float = as_float(stdevs.at[factor, period])
                 ci_lower: float = beta - confidence_interval_stdev * stdev
@@ -532,5 +536,7 @@ class PLOTTER:
 
         # Main title
         name: str = asset_name if asset_name is not None else asset_identifier
-        fig.suptitle(f"Factor loadings over time {name}", fontsize=self.fontsize_header, y=1.05)
+        fig.suptitle(
+            f"Factor loadings over time {name}", fontsize=self.fontsize_header, y=1.05
+        )
         plt.show()

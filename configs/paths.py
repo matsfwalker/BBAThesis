@@ -32,7 +32,6 @@ PATHCONFIG = PATH_CONFIG(
 
 # Enum for the analysis pathnames
 class FILENAMES_ANALYSIS(StrEnum):
-
     # Portfolio Info
     Portfolio_returns = "portfolio_returns_monthly"
     Portfolio_construction_details = "portfolio_construction_details"

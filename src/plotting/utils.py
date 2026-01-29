@@ -2,8 +2,10 @@ import pandas as pd
 from configs import ANALYSIS_PATHS, FILENAMES
 from typing import Tuple, Any
 
+
 def as_float(x: Any) -> float:
     return float(pd.to_numeric(x, errors="raise"))
+
 
 def import_plotting_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
