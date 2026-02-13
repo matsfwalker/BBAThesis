@@ -1,12 +1,14 @@
 import datetime as dt
 import os
 import re
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Sequence, Union
 
 import pandas as pd
 from dotenv import load_dotenv
+from .logging_configs import setup_logging
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 
@@ -146,6 +148,7 @@ class PATH_ANALYSIS(BasePathConfig):
     # Result directories in the RESULTS_DIR
     RESULT_DATA_DIR: Path
     RESULT_IMAGES_DIR: Path
+    LOGGING_DIR: Path
 
     def get_directory(self, type_: ALLOWED_TYPE) -> Path:
         match type_:
@@ -153,6 +156,8 @@ class PATH_ANALYSIS(BasePathConfig):
                 return self.RESULT_DATA_DIR
             case "portfolios":
                 return self.PORTFOLIO_DATA_DIR
+            case "logs":
+                return self.LOGGING_DIR
             case _:
                 raise ValueError(f"Type {type_} is not allowed")
 
@@ -192,6 +197,9 @@ class PATH_CONFIG(BasePathConfig):
     RESULT_DATA_DIR: Path
     RESULT_IMAGES_DIR: Path
 
+    # Logging directory
+    LOGGING_DIR: Path
+
     def get_directory(self, type_: ALLOWED_TYPE) -> Path:
         match type_:
             case "raw":
@@ -202,6 +210,8 @@ class PATH_CONFIG(BasePathConfig):
                 return self.RESULT_DATA_DIR
             case "portfolios":
                 return self.PORTFOLIO_DATA_DIR
+            case "logs":
+                return self.LOGGING_DIR
             case _:
                 raise ValueError(f"Type {type_} is not allowed")
 
@@ -257,9 +267,15 @@ class CONFIGURATION:
     # Paths
     paths: PATH_CONFIG
 
+    # Logging
+    LOG_INFO: bool
+    logger: Optional[logging.Logger] = field(default=None, init=False, repr=False)
+
     # Constants
     FACTORS_LIB: str
     FACTORS_DATA_SOURCE: str
+    INFLATION_LIB: str
+    INFLATION_SOURCE: str
 
     # Data downloading configs
     START_DATE_FACTORS_DOWNLOAD: dt.datetime
@@ -271,6 +287,7 @@ class CONFIGURATION:
     # Portfolio creation configs
     CUTOFF_FIRMS_PER_PORTFOLIO: int
     MIN_MARKETCAP_FIRM: float
+    DISCOUNT_MARKETCAP_FIRM_INFLATION: bool
     SIC_LEVEL: Literal[1, 2, 3, 4]
     PORTFOLIO_AGGREGATION_METHOD: Literal["MarketCap", "Equal"]
 
@@ -289,6 +306,10 @@ class CONFIGURATION:
     T_TEST_SIGNIFICANCE_LEVEL: float
 
     def __post_init__(self):
+        # Initialize the logger
+        if self.LOG_INFO:
+            object.__setattr__(self, "logger", setup_logging(self.paths.RESULT_DATA_DIR / "analysis.log"))
+        
         # Make sure the data is well structured
         if self.END_DATE_FACTORS_DOWNLOAD < self.START_DATE_FACTORS_DOWNLOAD:
             raise ValueError(
@@ -361,3 +382,4 @@ class DATAFRAME_CONTAINER:
     stock_market_info: pd.DataFrame
     firm_info: pd.DataFrame
     sic_info: pd.DataFrame
+    monthly_inflation: pd.Series

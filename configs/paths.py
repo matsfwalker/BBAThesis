@@ -1,5 +1,6 @@
 from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 
 from .schema import PATH_ANALYSIS, PATH_CONFIG, PROJECT_ROOT
 
@@ -7,6 +8,7 @@ from .schema import PATH_ANALYSIS, PATH_CONFIG, PROJECT_ROOT
 DATA_DIR: Path = PROJECT_ROOT / "data"
 SQL_DIR: Path = PROJECT_ROOT / "sql"
 RESULTS_DIR: Path = PROJECT_ROOT / "results"
+LOGGING_DIR: Path = PROJECT_ROOT / "logs"
 
 # Paths for the analysis
 ANALYSIS_PATHS = PATH_ANALYSIS(
@@ -14,6 +16,7 @@ ANALYSIS_PATHS = PATH_ANALYSIS(
     # Result directories in the RESULTS_DIR
     RESULT_DATA_DIR=RESULTS_DIR / "data",
     RESULT_IMAGES_DIR=RESULTS_DIR / "images",
+    LOGGING_DIR=PROJECT_ROOT / "logs",
 )
 
 # Paths for the main
@@ -27,6 +30,7 @@ PATHCONFIG = PATH_CONFIG(
     # Result directories in the RESULTS_DIR
     RESULT_DATA_DIR=RESULTS_DIR / "data",
     RESULT_IMAGES_DIR=RESULTS_DIR / "images",
+    LOGGING_DIR=PROJECT_ROOT / "logs",
 )
 
 
@@ -48,6 +52,9 @@ class FILENAMES(StrEnum):
     FF5_factors_monthly = "fama_french_monthly_factors"
     FF5_factors_yearly = "fama_french_yearly_factors"
 
+    # FF-Portfolio
+    ff_portfolios: Literal["Siccodes5", "Siccodes17", "Siccodes30", "Siccodes38", "Siccodes48", "Siccodes49"] = "Siccodes30"
+
     # Stock info files
     Stock_prices = "stock_prices_wrds_monthly_obs_universe"
 
@@ -60,6 +67,9 @@ class FILENAMES(StrEnum):
     # Portfolio Info
     Portfolio_returns = "portfolio_returns_monthly"
     Portfolio_construction_details = "portfolio_construction_details"
+
+    # Inflation information
+    Inflation_info_monthly = "monthly_inflation_info"
 
     # Model outcomes
     Comp_pred_actual_portfolio = "factor_model_predictions_monthly_obs_universe"

@@ -3,39 +3,43 @@
 
 import datetime as dt
 
-from .constants import END_PANDEMIC, FACTORS_DATA_SOURCE, FACTORS_LIB, START_PANDEMIC
+from .constants import END_PANDEMIC, FACTORS_DATA_SOURCE, FACTORS_LIB, START_PANDEMIC, INFLATION_LIB, INFLATION_SOURCE
 from .paths import PATHCONFIG
 from .schema import CONFIGURATION, PLOTTING_CONFIGURATIONS
 
-PLOTTING_CONFIG = PLOTTING_CONFIGURATIONS(
-    TIMESPANS_TO_PLOT=[
-        {
-            "name": "Pandemic",
-            "start": START_PANDEMIC,
-            "end": END_PANDEMIC,
-            "color": "grey",
-        }
-    ]
-)
-
 
 CONFIG = CONFIGURATION(
-    # Paths
+    #########
+    # Paths #
+    #########
     paths=PATHCONFIG,
-    # Constants
+    ###########
+    # Sources #
+    ###########
     FACTORS_LIB=FACTORS_LIB,
     FACTORS_DATA_SOURCE=FACTORS_DATA_SOURCE,
-    # Data downloading configs
+    INFLATION_LIB=INFLATION_LIB,
+    INFLATION_SOURCE=INFLATION_SOURCE,
+    ############################
+    # Data downloading configs #
+    ############################
     START_DATE_FACTORS_DOWNLOAD=dt.datetime(2008, 1, 1),
     END_DATE_FACTORS_DOWNLOAD=dt.datetime.now(),
-    # Data-cleaning configs
+    #########################
+    # Data-cleaning configs #
+    #########################
     THRESHOLD_MISSING_SHARESOUTSTANDING=0.5,  # Relative threshold of missing sharesoutstanding to drop a ticker
-    # Portfolio creation configs
+    ##############################
+    # Portfolio creation configs #
+    ##############################
     CUTOFF_FIRMS_PER_PORTFOLIO=10,  # Number of firms needed per portfolio
     MIN_MARKETCAP_FIRM=100_000.0,  # Minimum latest market cap needed for a firm to be considered
+    DISCOUNT_MARKETCAP_FIRM_INFLATION = True, # Discount the marketcap of firms. If this is used, then the minimum market cap is in real terms, not nominal and applied to each period.
     SIC_LEVEL=2,  # SIC code level to use for industry portfolios. The larger, the more granular.
     PORTFOLIO_AGGREGATION_METHOD="MarketCap",  # Method to aggregate firms into portfolios
-    # Model configurations
+    ########################
+    # Model configurations #
+    ########################
     BREAK_DATE_PERIODS=[
         dt.datetime(2015, 1, 1),
         dt.datetime(2019, 1, 1),
@@ -47,7 +51,21 @@ CONFIG = CONFIGURATION(
     INCLUDE_WHOLE_PERIOD_MODEL=True,  # Whether to compute the model for the entire period in addition to subperiods
     MARKETCAP_PORTFOLIO_PERCENTILE=0.2,  # Percentile threshold to define market cap portfolios (e.g., 0.4 means bottom 40% vs top 40%).
     MARKETCAP_PORTFOLIO_NUMBER_FIRMS=None,  # Number of firms to include in top and bottom market cap portfolios.
-    # Statistical configurations
+    ##############################
+    # Statistical configurations #
+    ##############################
     T_TEST_FACTORS="all",  # Factors to perform t-tests on
     T_TEST_SIGNIFICANCE_LEVEL=2.0,  # Significance level for t-tests
+)
+
+
+PLOTTING_CONFIG = PLOTTING_CONFIGURATIONS(
+    TIMESPANS_TO_PLOT=[
+        {
+            "name": "Pandemic",
+            "start": START_PANDEMIC,
+            "end": END_PANDEMIC,
+            "color": "grey",
+        }
+    ]
 )

@@ -8,10 +8,6 @@ import wrds  # Wharton Research Data Services
 
 from configs import CONFIG, CONFIGURATION, FILENAMES, DATAFRAME_CONTAINER
 
-type EntireData = Tuple[
-    pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
-]
-
 
 # Sub-download functions
 def download_fama_french_factors(
@@ -135,6 +131,47 @@ def download_sic_description_wrds(
     return con.raw_sql(sql_query_sic_codes)
 
 
+def download_monthly_inflation(
+    config: CONFIGURATION
+)->pd.Series:
+    """
+    Function to download monthly inflation data for the entire period to discount values using the time value of money.
+    This is the MoM inflation, not inflation compared to previous year.
+
+    Parameters
+    ----------
+    config : CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    pd.Series
+        Series containing MoM inflation
+    
+    """
+    # Unpack the config
+    start_date: dt.datetime = config.START_DATE_FACTORS_DOWNLOAD - dt.timedelta(days=31)
+    end_date: dt.datetime = config.END_DATE_FACTORS_DOWNLOAD
+
+    inflation_lib: str = config.INFLATION_LIB
+    inflation_source: str = config.INFLATION_SOURCE
+
+    cpi: Any = web.DataReader(name = inflation_source,
+                         data_source=inflation_lib, 
+                         start= start_date,
+                         end=end_date)
+    
+    if not isinstance(cpi, pd.DataFrame):
+        raise ValueError(f"cpi object downloaded from {inflation_lib} is of type {type(cpi)} and not pd.DataFrame")
+    
+    monthly_inflation: pd.Series = cpi["CPIAUCSL"].pct_change(1, fill_method=None)
+
+    monthly_inflation.name = "MoM inflation"
+    monthly_inflation.index.name = "date"
+
+    return monthly_inflation
+
+
 # Main functions
 def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     """Donwloads the entire data necessary for the project.
@@ -166,6 +203,9 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     # Download sic codes
     sic_codes: pd.DataFrame = download_sic_description_wrds(db, CONFIG)
 
+    # Download inflation information
+    monthly_inflation: pd.Series = download_monthly_inflation(CONFIG)
+
     db.close()
 
     return DATAFRAME_CONTAINER(
@@ -174,6 +214,7 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
         stock_market_info=prices_obs_universe,
         firm_info=firm_info,
         sic_info=sic_codes,
+        monthly_inflation=monthly_inflation
     )
 
 
@@ -195,6 +236,7 @@ def save_data(data: DATAFRAME_CONTAINER) -> None:
     prices_obs_universe: pd.DataFrame = data.stock_market_info
     firm_info: pd.DataFrame = data.firm_info
     sic_codes: pd.DataFrame = data.sic_info
+    monthly_inflation: pd.DataFrame = data.monthly_inflation
 
     ff5_monthly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_monthly))
     ff5_yearly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_yearly))
@@ -206,6 +248,8 @@ def save_data(data: DATAFRAME_CONTAINER) -> None:
     firm_info.to_csv(CONFIG.paths.raw_out(FILENAMES.Firm_info), index=False)
 
     sic_codes.to_csv(CONFIG.paths.raw_out(FILENAMES.Sic_description), index=False)
+
+    monthly_inflation.to_csv(CONFIG.paths.raw_out(FILENAMES.Inflation_info_monthly), index=True)
 
     return
 

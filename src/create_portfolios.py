@@ -5,9 +5,32 @@ import pandas as pd
 
 from configs import CONFIG, CONFIGURATION, FILENAMES
 
+# utils function to discount values based on inflation
+def inflation_discount(
+    inflation_info: pd.Series,
+    value: float
+) -> pd.Series:
+    """
+    Function to discount a given value based on the inflation discount multiples.
+    
+    Parameters
+    ----------
+    inflation_info : pd.DataFrame
+        DataFrame containing the inflation discount multiples with a datetime index.
+    value : float
+        The value to be discounted.
+    
+    Returns
+    -------
+    pd.Series
+        A Series containing the discounted values for each date.
+    """
+    inflation_info: pd.DataFrame = inflation_info.copy()
+    return inflation_info["Inflation multiple"] * value
+
 
 # Import the data
-def get_stockprices_firminfo_siccodes(
+def get_stockprices_firminfo_siccodes_inflation(
     config: CONFIGURATION,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
@@ -17,10 +40,11 @@ def get_stockprices_firminfo_siccodes(
     ----------
     config : CONFIGURATION
         Configuration of the model
+
     Returns
     -------
-    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
-        A tuple containing three DataFrames: stock prices, firm info, and SIC code descriptions.
+    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]
+        A tuple containing three DataFrames: stock prices, firm info, SIC code, and inflation descriptions.
     """
 
     stock_prices: pd.DataFrame = pd.read_csv(
@@ -37,7 +61,13 @@ def get_stockprices_firminfo_siccodes(
         config.paths.processed_read(FILENAMES.Sic_description)
     )
 
-    return stock_prices, firm_info, sic_codes
+    inflation: pd.DataFrame = pd.read_csv(
+        config.paths.processed_read(FILENAMES.Inflation_info_monthly),
+        parse_dates=["date"],
+        index_col="date",
+    )
+
+    return stock_prices, firm_info, sic_codes, inflation
 
 
 # Compute and cutoff MarketCap
@@ -64,7 +94,7 @@ def compute_market_cap(
     return df_info[price_column] * df_info[shares_column]
 
 
-def apply_cutoff_latest_marketcap(
+def apply_marketcap_cutoff_latestperiod(
     stock_prices: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
@@ -91,6 +121,43 @@ def apply_cutoff_latest_marketcap(
     )
 
     return latest_prices[latest_prices["market_cap"] >= marketcap_cutoff]
+
+
+def apply_marketcap_cutoff_allperiods(
+    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION
+)-> pd.DataFrame:
+    """
+    Function to apply a market cap cutoff to the stock prices of all periods, discounting the market cap by inflation.
+    Parameters
+    ----------
+    stock_prices : pd.DataFrame
+        DataFrame containing stock prices with a datetime index.
+    inflation : pd.DataFrame
+        DataFrame containing inflation discount multiples with a datetime index.
+    config : CONFIGURATION
+        Configuration of the project.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing only the firms that meet the market cap cutoff in each period after discounting for inflation.
+    """
+    # Unpack the config:
+    min_marketcap: float = config.MIN_MARKETCAP_FIRM
+
+    # Discount the market cap by inflation
+    min_marketcap_discounted: pd.Series = inflation_discount(
+        inflation_info=inflation, value=min_marketcap
+    )
+
+    # Ensure alignment
+    min_marketcap_discounted = min_marketcap_discounted.reindex(stock_prices.index)
+
+    mask = stock_prices["market_cap"] >= min_marketcap_discounted
+    survivors = mask.groupby(stock_prices["gvkey"]).all()
+    filtered_stock_prices = stock_prices[stock_prices["gvkey"].isin(survivors[survivors].index)]
+
+    return filtered_stock_prices
 
 
 # Create Industry Portfolios from SIC-Codes
@@ -222,9 +289,11 @@ def intersect_portfolios_price_companyinfo(
     pd.DataFrame
         A DataFrame containing only the firms that are present in both the portfolios and firm information dataframes.
     """
+    print(price_df)
     final_portfolio: pd.DataFrame = portfolios_df.merge(
         price_df, on="gvkey", how="inner"
     ).merge(firm_info_df[["gvkey", "companyname"]], on="gvkey", how="left")
+    print(final_portfolio.columns)
     return final_portfolio
 
 
@@ -244,6 +313,7 @@ def get_portfolio_constitution(portfolio_df: pd.DataFrame) -> pd.DataFrame:
         A DataFrame containing the portfolio constitution details.
     """
     # Create a new dataframe that tracks the constitution of the portfolio
+    print(portfolio_df.columns)
     final_portfolio_constitution: pd.DataFrame = portfolio_df.drop_duplicates(
         subset="gvkey", keep="last"
     ).set_index(["sicdescription", "gvkey"])[
@@ -557,7 +627,7 @@ def create_portfolios_and_returns(
     """
 
     # Dowload the data
-    stock_prices, firm_info, sic_codes = get_stockprices_firminfo_siccodes(config)
+    stock_prices, firm_info, sic_codes, inflation = get_stockprices_firminfo_siccodes_inflation(config)
 
     # Compute the market cap
     stock_prices["market_cap"] = compute_market_cap(
@@ -565,7 +635,10 @@ def create_portfolios_and_returns(
     )
 
     # Apply market cap cutoff to filter the firms
-    prices_cutoff: pd.DataFrame = apply_cutoff_latest_marketcap(stock_prices, config)
+    if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
+        prices_cutoff: pd.DataFrame = apply_marketcap_cutoff_allperiods(stock_prices, inflation, config)
+    else:
+        prices_cutoff: pd.DataFrame = apply_marketcap_cutoff_latestperiod(stock_prices, config)
 
     # Get the main portfolios by industry using the SIC codes
     indutry_portfolios: pd.DataFrame = compute_industry_portfolios_sic(
@@ -581,6 +654,7 @@ def create_portfolios_and_returns(
         )
     )
 
+    print(industry_portfolios_with_info)
     # Get the constitution of the portfolios
     industry_portfolio_constitution: pd.DataFrame = get_portfolio_constitution(
         industry_portfolios_with_info
