@@ -308,7 +308,7 @@ class CONFIGURATION:
     def __post_init__(self):
         # Initialize the logger
         if self.LOG_INFO:
-            object.__setattr__(self, "logger", setup_logging(self.paths.RESULT_DATA_DIR / "analysis.log"))
+            object.__setattr__(self, "logger", setup_logging(name="Thesis",log_file=self.paths.LOGGING_DIR / "logging.log"))
         
         # Make sure the data is well structured
         if self.END_DATE_FACTORS_DOWNLOAD < self.START_DATE_FACTORS_DOWNLOAD:

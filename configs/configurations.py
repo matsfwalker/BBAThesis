@@ -14,6 +14,10 @@ CONFIG = CONFIGURATION(
     #########
     paths=PATHCONFIG,
     ###########
+    # Logging #
+    ###########
+    LOG_INFO=True,
+    ###########
     # Sources #
     ###########
     FACTORS_LIB=FACTORS_LIB,
