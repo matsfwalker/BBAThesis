@@ -133,7 +133,9 @@ def _compute_market_cap(
     return df_info[price_column] * df_info[shares_column]
 
 
-def get_market_cap(stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION) -> pd.DataFrame:
+def get_market_cap(
+    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION
+) -> pd.DataFrame:
     """
     Function to add the market cap and present value market cap of firms to the dataframe.
 
@@ -146,14 +148,16 @@ def get_market_cap(stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: 
         DataFrame containing the inflation discount multiples with a datetime index.
     config : CONFIGURATION
         Configuration of the project.
-    
+
     Returns
     -------
     pd.DataFrame
         A DataFrame containing the original stock prices information along with the market cap and present value market cap (if applicable) of each firm.
     """
     stock_prices = stock_prices.copy()
-    stock_prices["market_cap"] = _compute_market_cap(stock_prices, "close", "sharesoutstanding")
+    stock_prices["market_cap"] = _compute_market_cap(
+        stock_prices, "close", "sharesoutstanding"
+    )
 
     if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
         stock_prices["market_cap_present_value"] = _present_value_inflation(
@@ -184,7 +188,7 @@ def _apply_marketcap_cutoff_latestperiod(
     # Unpack the config:
     marketcap_cutoff: float = config.MIN_MARKETCAP_FIRM
 
-    num_firms_start: int = stock_prices['gvkey'].nunique()
+    num_firms_start: int = stock_prices["gvkey"].nunique()
 
     # Get the latest date and corresponding entries
     latest_date: pd.Timestamp = stock_prices.index.max()
@@ -196,7 +200,7 @@ def _apply_marketcap_cutoff_latestperiod(
         latest_prices["market_cap"] >= marketcap_cutoff
     ]
 
-    num_firms_end: int = result['gvkey'].nunique()
+    num_firms_end: int = result["gvkey"].nunique()
 
     if config.LOG_INFO:
         config.logger.info(
@@ -229,7 +233,7 @@ def _apply_marketcap_cutoff_allperiods(
     # Unpack the config:
     min_marketcap: float = config.MIN_MARKETCAP_FIRM
 
-    num_firms_start: int = stock_prices['gvkey'].nunique()
+    num_firms_start: int = stock_prices["gvkey"].nunique()
 
     # Discount the market cap by inflation
     min_marketcap_discounted: pd.Series = _inflation_discount(
@@ -252,7 +256,7 @@ def _apply_marketcap_cutoff_allperiods(
         .reset_index()
     )
 
-    num_firms_end: int = filtered_stock_prices_lastval['gvkey'].nunique()
+    num_firms_end: int = filtered_stock_prices_lastval["gvkey"].nunique()
 
     if config.LOG_INFO:
         config.logger.info(
@@ -535,7 +539,15 @@ def get_portfolio_constitution(portfolio_df: pd.DataFrame) -> pd.DataFrame:
     final_portfolio_constitution: pd.DataFrame = portfolio_df.drop_duplicates(
         subset="gvkey", keep="last"
     ).set_index(["industry_name", "gvkey"])[
-        ["companyname", "market_cap", "close", "sharesoutstanding", "key", "date", "market_cap_present_value"]
+        [
+            "companyname",
+            "market_cap",
+            "close",
+            "sharesoutstanding",
+            "key",
+            "date",
+            "market_cap_present_value",
+        ]
     ]
 
     group_totals: pd.Series = final_portfolio_constitution.groupby(level=0)[
@@ -625,9 +637,7 @@ def compute_marketcap_portfolios(
     return df.reset_index()
 
 
-def aggregate_portfolio(
-    portfolio: pd.DataFrame, config: CONFIGURATION
-) -> pd.DataFrame:
+def aggregate_portfolio(portfolio: pd.DataFrame, config: CONFIGURATION) -> pd.DataFrame:
     """
     Function to aggregate the portfolio by SIC description and sort them.
 
@@ -649,7 +659,7 @@ def aggregate_portfolio(
             key=("key", "first"),
             num_firms=("gvkey", "nunique"),
             total_market_cap=("market_cap", "sum"),
-            total_presentvalue_marketcap=("market_cap_present_value", "sum"), 
+            total_presentvalue_marketcap=("market_cap_present_value", "sum"),
             gvkeys=("gvkey", lambda x: list(x)),
             marketcap_id=("MarketCapID", "first"),
         )
@@ -682,11 +692,13 @@ def drop_small_portfolios(
     """
     min_firms_per_portfolio: int = config.CUTOFF_FIRMS_PER_PORTFOLIO
 
-    num_portfolios_start: int = portfolio_df['industry_name'].nunique()
+    num_portfolios_start: int = portfolio_df["industry_name"].nunique()
 
-    result: pd.DataFrame = portfolio_df[portfolio_df["num_firms"] >= min_firms_per_portfolio]
+    result: pd.DataFrame = portfolio_df[
+        portfolio_df["num_firms"] >= min_firms_per_portfolio
+    ]
 
-    num_portfolios_end: int = result['industry_name'].nunique()
+    num_portfolios_end: int = result["industry_name"].nunique()
 
     if config.LOG_INFO:
         config.logger.info(
@@ -733,27 +745,26 @@ def _calculate_weight_in_portfolio_marketcap(firm_subset: pd.DataFrame) -> pd.Se
     """
     Function to compute weights of firms in a portfolio based on their market capitalization.
     This is the one period lagged market cap weight, meaning that the market cap used to compute the weights is from the previous period to avoid look-ahead bias.
-    
+
     Parameters
     ----------
     firm_subset : pd.DataFrame
         DataFrame containing the information of the firms in the portfolio, including their market cap and date.
-    
+
     Returns
     -------
     pd.Series
-        A Series containing the weight of each firm in the portfolio based on their market capitalization."""
+        A Series containing the weight of each firm in the portfolio based on their market capitalization.
+    """
     # Compute the lagged Market Cap
-    firm_subset["Lagged_MarketCap"] = (
-        firm_subset.groupby("gvkey")["market_cap"].shift(1)
+    firm_subset["Lagged_MarketCap"] = firm_subset.groupby("gvkey")["market_cap"].shift(
+        1
     )
 
     # Compute the weight as the MarketCap weight in the portfolio
-    weights: pd.Series = firm_subset[
+    weights: pd.Series = firm_subset["Lagged_MarketCap"] / firm_subset.groupby("date")[
         "Lagged_MarketCap"
-    ] / firm_subset.groupby("date")["Lagged_MarketCap"].transform(
-        "sum"
-    )
+    ].transform("sum")
     return weights
 
 
@@ -761,38 +772,38 @@ def _calculate_weight_in_portfolio_equal(firm_subset: pd.DataFrame) -> pd.Series
     """
     Function to calculate the equal weight of firms in a portfolio.
     This is, all firms have the same weight.
-    
+
     Parameters
     ----------
     firm_subset : pd.DataFrame
         DataFrame containing the information of the firms in the portfolio.
-    
+
     Returns
     -------
     pd.Series
         A Series containing the equal weight of each firm in the portfolio."""
-    
+
     # Get the number of firms in the portfolio on each date
-    num_firms: pd.Series = firm_subset.groupby("date")[
-        "gvkey"
-    ].transform("nunique")
+    num_firms: pd.Series = firm_subset.groupby("date")["gvkey"].transform("nunique")
 
     weights: pd.Series = 1.0 / num_firms
 
     return weights
 
 
-def _calculate_weight_in_portfolio(firm_subset: pd.DataFrame, config=CONFIGURATION)->pd.Series:
+def _calculate_weight_in_portfolio(
+    firm_subset: pd.DataFrame, config=CONFIGURATION
+) -> pd.Series:
     """
     Function to calculate the weight of different firms in a portfolio according to the configuration.
-    
+
     Parameters
     ----------
     firm_subset : pd.DataFrame
         DataFrame containing the information of the firms in the portfolio.
     config : CONFIGURATION
         Configuration of the project.
-    
+
     Returns
     -------
     pd.Series
@@ -808,8 +819,9 @@ def _calculate_weight_in_portfolio(firm_subset: pd.DataFrame, config=CONFIGURATI
         weights: pd.Series = _calculate_weight_in_portfolio_equal(firm_subset)
     else:
         raise ValueError("Invalid aggregation method.")
-    
+
     return weights
+
 
 def calculate_portfolio_returns(
     portfolios_df: pd.DataFrame, prices_df: pd.DataFrame, config: CONFIGURATION
@@ -848,7 +860,9 @@ def calculate_portfolio_returns(
         ].copy()
 
         # Calculate the weights per stock
-        prices_and_returns_subset["Weight"] = _calculate_weight_in_portfolio(firm_subset=prices_and_returns_subset, config=config)
+        prices_and_returns_subset["Weight"] = _calculate_weight_in_portfolio(
+            firm_subset=prices_and_returns_subset, config=config
+        )
 
         # Multiply the returns by the weights and sum them to get the portfolio return
         portfolio_returns[row["industry_name"]] = (
@@ -873,11 +887,11 @@ def create_portfolios(
     sic_descr: pd.DataFrame,
     ff_industry_portfolios: pd.DataFrame,
     firms_to_keep: pd.DataFrame,
-    config: CONFIGURATION
+    config: CONFIGURATION,
 ) -> pd.DataFrame:
     """
     Function to orchestrate the creation and formatting of industry and marketcap portfolios.
-    
+
     Parameters
     ----------
     firm_descr : pd.DataFrame
@@ -890,12 +904,13 @@ def create_portfolios(
         DataFrame containing the firms that passed the market cap cutoff.
     config : CONFIGURATION
         Configuration of the project.
-    
+
     Returns
     -------
     pd.DataFrame
-        A DataFrame containing the final portfolios with their industry classification and market cap based sub-portfolios."""
-    
+        A DataFrame containing the final portfolios with their industry classification and market cap based sub-portfolios.
+    """
+
     # Assign each firm to an industry
     firm_industry_assignment: pd.DataFrame = assign_industry_to_firms(
         firm_descr=firm_descr,
@@ -934,6 +949,7 @@ def create_portfolios(
     )
 
     return industry_marketcap_portfolios_filtered
+
 
 # Save the results
 def save_portfolio_returns_constitution(
@@ -1009,7 +1025,9 @@ def create_portfolios_and_returns(
 
     # Compute the market cap
     stock_market_info_marketcap: pd.DataFrame = get_market_cap(
-        stock_prices=data.stock_market_info, inflation=data.monthly_inflation,config=config
+        stock_prices=data.stock_market_info,
+        inflation=data.monthly_inflation,
+        config=config,
     )
 
     # Cutoff the firms based on their market cap
@@ -1025,7 +1043,7 @@ def create_portfolios_and_returns(
         sic_descr=data.sic_info,
         ff_industry_portfolios=data.ff_industry_portfolios,
         firms_to_keep=firms_to_keep,
-        config=config
+        config=config,
     )
 
     # Calculate the returns of the portfolios from their constituents
