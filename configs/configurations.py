@@ -75,6 +75,7 @@ CONFIG = CONFIGURATION(
     ##############################
     T_TEST_FACTORS="all",  # Factors to perform t-tests on
     T_TEST_SIGNIFICANCE_LEVEL=2.0,  # Significance level for t-tests
+    P_THRESHOLD_JARQUE_BERA=0.05,  # p-value threshold for Jarque-Bera test to reject normality
 )
 
 

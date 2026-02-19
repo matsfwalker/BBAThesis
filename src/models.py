@@ -338,7 +338,7 @@ def t_test_significance(
     return model_parameters
 
 
-def date_range_to_str(start_date: dt.datetime, end_date: dt.datetime) -> str:
+def _date_range_to_str(start_date: dt.datetime, end_date: dt.datetime) -> str:
     """
     Function to convert a date range to a string representation.
 
@@ -358,7 +358,7 @@ def date_range_to_str(start_date: dt.datetime, end_date: dt.datetime) -> str:
     return f"{start_date.strftime('%m/%Y')}:{end_date.strftime('%m/%Y')}"
 
 
-def date_ranges_break_dates(
+def _date_ranges_break_dates(
     all_dates: List[dt.datetime],
     break_dates: Sequence[dt.datetime],
     include_end_date: bool = True,
@@ -397,7 +397,7 @@ def date_ranges_break_dates(
         date_ranges["Entire Period"] = (sorted_dates[0], sorted_dates[-1])
 
     if include_start_date:
-        date_ranges[date_range_to_str(sorted_dates[0], sorted_break_dates[0])] = (
+        date_ranges[_date_range_to_str(sorted_dates[0], sorted_break_dates[0])] = (
             sorted_dates[0],
             sorted_break_dates[0],
         )
@@ -405,10 +405,10 @@ def date_ranges_break_dates(
     for i in range(len(sorted_break_dates) - 1):
         start_date: dt.datetime = sorted_break_dates[i]
         end_date: dt.datetime = sorted_break_dates[i + 1]
-        date_ranges[date_range_to_str(start_date, end_date)] = (start_date, end_date)
+        date_ranges[_date_range_to_str(start_date, end_date)] = (start_date, end_date)
 
     if include_end_date:
-        date_ranges[date_range_to_str(sorted_break_dates[-1], sorted_dates[-1])] = (
+        date_ranges[_date_range_to_str(sorted_break_dates[-1], sorted_dates[-1])] = (
             sorted_break_dates[-1],
             sorted_dates[-1],
         )
@@ -416,7 +416,7 @@ def date_ranges_break_dates(
     return date_ranges
 
 
-def date_ranges_windows(
+def _date_ranges_windows(
     all_dates: List[dt.datetime],
     window_size_months: int,
     include_whole_period: bool = True,
@@ -454,7 +454,7 @@ def date_ranges_windows(
         window_end_date: dt.datetime = curr_date + pd.DateOffset(
             months=window_size_months
         )
-        date_ranges[date_range_to_str(curr_date, window_end_date)] = (
+        date_ranges[_date_range_to_str(curr_date, window_end_date)] = (
             curr_date,
             window_end_date,
         )
@@ -462,11 +462,66 @@ def date_ranges_windows(
         curr_date = window_end_date
 
     if last_start_date != end_date and last_start_date is not None:
-        date_ranges[date_range_to_str(last_start_date, end_date)] = (
+        date_ranges[_date_range_to_str(last_start_date, end_date)] = (
             last_start_date,
             end_date,
         )
 
+    return date_ranges
+
+
+def construct_date_ranges(
+    df: pd.DataFrame,
+    config: CONFIGURATION,
+) -> Dict[str, Tuple[dt.datetime, dt.datetime]]:
+    """
+    Function to create the date ranges depending on the config.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing the data with a datetime index to create the date ranges from.
+    config : CONFIGURATION
+        Configuration of the model containing the parameters to create the date ranges.
+    
+    Returns
+    -------
+    Dict[str, Tuple[dt.datetime, dt.datetime]]
+        Dictionary relating the title of the timeframe to the start and end dates.
+    """
+        # Unpack the config
+    break_dates: Optional[Sequence[dt.datetime]] = config.BREAK_DATE_PERIODS
+    date_window_months: Optional[int] = config.PERIOD_WINDOW_LENGTH_MONTHS
+    include_start_date: bool = config.INCLUDE_START_DATE_PERIOD
+    include_end_date: bool = config.INCLUDE_END_DATE_PERIOD
+    include_whole_period: bool = config.INCLUDE_WHOLE_PERIOD_MODEL
+
+    assert (break_dates is not None) or (
+        date_window_months is not None
+    ), "Either break_dates or date_window_months must be specified."
+
+    date_ranges: Dict[str, Tuple[dt.datetime, dt.datetime]] = {}
+
+    # Determine the date ranges
+    if break_dates is not None:
+        date_ranges = _date_ranges_break_dates(
+            all_dates=df.index.tolist(),
+            break_dates=break_dates,
+            include_end_date=include_end_date,
+            include_start_date=include_start_date,
+            include_whole_period=include_whole_period,
+        )
+    elif date_window_months is not None:
+        date_ranges = _date_ranges_windows(
+            all_dates=df.index.tolist(),
+            window_size_months=date_window_months,
+            include_whole_period=include_whole_period,
+        )
+    else:
+        raise ValueError(
+            "Either config.PERIOD_WINDOW_LENGTH_MONTHS or  config.BREAK_DATE_PERIODS must be defined"
+        )
+    
     return date_ranges
 
 
@@ -508,40 +563,11 @@ def factor_loadings_over_time(
     """
 
     # Unpack the config
-    break_dates: Optional[Sequence[dt.datetime]] = config.BREAK_DATE_PERIODS
-    date_window_months: Optional[int] = config.PERIOD_WINDOW_LENGTH_MONTHS
-    include_start_date: bool = config.INCLUDE_START_DATE_PERIOD
-    include_end_date: bool = config.INCLUDE_END_DATE_PERIOD
-    include_whole_period: bool = config.INCLUDE_WHOLE_PERIOD_MODEL
-
-    assert (break_dates is not None) or (
-        date_window_months is not None
-    ), "Either break_dates or date_window_months must be specified."
 
     # Align the data on the index
     factors_aligned, returns_aligned = factors.align(returns, join="inner", axis=0)
 
-    date_ranges: Dict[str, Tuple[dt.datetime, dt.datetime]] = {}
-
-    # Determine the date ranges
-    if break_dates is not None:
-        date_ranges = date_ranges_break_dates(
-            all_dates=factors_aligned.index.tolist(),
-            break_dates=break_dates,
-            include_end_date=include_end_date,
-            include_start_date=include_start_date,
-            include_whole_period=include_whole_period,
-        )
-    elif date_window_months is not None:
-        date_ranges = date_ranges_windows(
-            all_dates=factors_aligned.index.tolist(),
-            window_size_months=date_window_months,
-            include_whole_period=include_whole_period,
-        )
-    else:
-        raise ValueError(
-            "Either config.PERIOD_WINDOW_LENGTH_MONTHS or  config.BREAK_DATE_PERIODS must be defined"
-        )
+    date_ranges: Dict[str, Tuple[dt.datetime, dt.datetime]] = construct_date_ranges(factors_aligned, config)
 
     # Run the regression for each time period
     regression_results: Dict[str, pd.DataFrame] = {
