@@ -320,7 +320,6 @@ class CONFIGURATION:
     P_THRESHOLD_JARQUE_BERA: float
 
     def __post_init__(self):
-
         # Make sure the data is well structured
         if self.END_DATE_FACTORS_DOWNLOAD < self.START_DATE_FACTORS_DOWNLOAD:
             raise ValueError(

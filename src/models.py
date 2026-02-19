@@ -476,20 +476,20 @@ def construct_date_ranges(
 ) -> Dict[str, Tuple[dt.datetime, dt.datetime]]:
     """
     Function to create the date ranges depending on the config.
-    
+
     Parameters
     ----------
     df : pd.DataFrame
         DataFrame containing the data with a datetime index to create the date ranges from.
     config : CONFIGURATION
         Configuration of the model containing the parameters to create the date ranges.
-    
+
     Returns
     -------
     Dict[str, Tuple[dt.datetime, dt.datetime]]
         Dictionary relating the title of the timeframe to the start and end dates.
     """
-        # Unpack the config
+    # Unpack the config
     break_dates: Optional[Sequence[dt.datetime]] = config.BREAK_DATE_PERIODS
     date_window_months: Optional[int] = config.PERIOD_WINDOW_LENGTH_MONTHS
     include_start_date: bool = config.INCLUDE_START_DATE_PERIOD
@@ -521,7 +521,7 @@ def construct_date_ranges(
         raise ValueError(
             "Either config.PERIOD_WINDOW_LENGTH_MONTHS or  config.BREAK_DATE_PERIODS must be defined"
         )
-    
+
     return date_ranges
 
 
@@ -567,7 +567,9 @@ def factor_loadings_over_time(
     # Align the data on the index
     factors_aligned, returns_aligned = factors.align(returns, join="inner", axis=0)
 
-    date_ranges: Dict[str, Tuple[dt.datetime, dt.datetime]] = construct_date_ranges(factors_aligned, config)
+    date_ranges: Dict[str, Tuple[dt.datetime, dt.datetime]] = construct_date_ranges(
+        factors_aligned, config
+    )
 
     # Run the regression for each time period
     regression_results: Dict[str, pd.DataFrame] = {

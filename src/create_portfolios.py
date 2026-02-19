@@ -813,14 +813,12 @@ def _calculate_weight_in_portfolio(
     how: Literal["MarketCap", "Equal"] = config.PORTFOLIO_AGGREGATION_METHOD
 
     if how == "MarketCap":
-        weights: pd.Series = _calculate_weight_in_portfolio_marketcap(firm_subset)
+        return _calculate_weight_in_portfolio_marketcap(firm_subset)
 
     elif how == "Equal":
-        weights: pd.Series = _calculate_weight_in_portfolio_equal(firm_subset)
+        return _calculate_weight_in_portfolio_equal(firm_subset)
     else:
         raise ValueError("Invalid aggregation method.")
-
-    return weights
 
 
 def calculate_portfolio_returns(
