@@ -10,6 +10,9 @@ from .constants import (
     START_PANDEMIC,
     INFLATION_LIB,
     INFLATION_SOURCE,
+    ANALYSIS_START_DATE,
+    ANALYSIS_END_DATE,
+    BREAK_DATE_PERIODS
 )
 from .paths import PATHCONFIG
 from .schema import CONFIGURATION, PLOTTING_CONFIGURATIONS
@@ -37,8 +40,8 @@ CONFIG = CONFIGURATION(
     ############################
     # Data downloading configs #
     ############################
-    START_DATE_FACTORS_DOWNLOAD=dt.datetime(2008, 1, 1),
-    END_DATE_FACTORS_DOWNLOAD=dt.datetime.now(),
+    START_DATE_ANALYSIS=ANALYSIS_START_DATE,
+    END_DATE_ANALYSIS=ANALYSIS_END_DATE,
     #########################
     # Data-cleaning configs #
     #########################
@@ -59,11 +62,7 @@ CONFIG = CONFIGURATION(
     ########################
     # Model configurations #
     ########################
-    BREAK_DATE_PERIODS=[
-        dt.datetime(2015, 1, 1),
-        dt.datetime(2019, 1, 1),
-        dt.datetime(2022, 1, 1),
-    ],
+    BREAK_DATE_PERIODS=BREAK_DATE_PERIODS,
     INCLUDE_END_DATE_PERIOD=True,
     INCLUDE_START_DATE_PERIOD=True,
     PERIOD_WINDOW_LENGTH_MONTHS=None,

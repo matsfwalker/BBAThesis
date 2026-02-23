@@ -30,8 +30,8 @@ def download_fama_french_factors(
     # Retrieve the necessary info from config
     lib_name: str = config.FACTORS_LIB
     data_course: str = config.FACTORS_DATA_SOURCE
-    start_date: dt.datetime = config.START_DATE_FACTORS_DOWNLOAD
-    end_date: dt.datetime = config.END_DATE_FACTORS_DOWNLOAD
+    start_date: dt.datetime = config.START_DATE_ANALYSIS
+    end_date: dt.datetime = config.END_DATE_ANALYSIS
 
     # Filter out the internal deprecation warning of web.DataReader
     warnings.filterwarnings(
@@ -77,8 +77,8 @@ def download_prices_daily_wrds(
     """
 
     # Unpack the config
-    start_date: dt.datetime = config.START_DATE_FACTORS_DOWNLOAD - dt.timedelta(days=31)
-    end_date: dt.datetime = config.END_DATE_FACTORS_DOWNLOAD - dt.timedelta(days=31)
+    start_date: dt.datetime = config.START_DATE_ANALYSIS - dt.timedelta(days=31)
+    end_date: dt.datetime = config.END_DATE_ANALYSIS - dt.timedelta(days=31)
     price_query_params: Tuple[str, str] = (
         start_date.strftime("%Y-%m-%d"),
         end_date.strftime("%Y-%m-%d"),
@@ -95,7 +95,7 @@ def download_prices_daily_wrds(
 
     if config.LOG_INFO:
         config.logger.info(
-            f"Successfully downloaded daily prices for the observable universe of stocks from WRDS from {start_date} to {end_date}"
+            f"Successfully downloaded daily prices for the observable universe of stocks ({len(result["gvkey"].unique())} firms) from WRDS from {start_date} to {end_date}"
         )
 
     return result
@@ -125,7 +125,7 @@ def download_firm_info_wrds(
 
     if config.LOG_INFO:
         config.logger.info(
-            "Successfully downloaded firm information for the observable universe of stocks from WRDS"
+            f"Successfully downloaded firm information for the observable universe ({len(result["gvkey"].unique())} firms) of stocks from WRDS"
         )
 
     return result
@@ -158,7 +158,7 @@ def download_sic_description_wrds(
 
     if config.LOG_INFO:
         config.logger.info(
-            "Successfully downloaded firm information for the observable universe of stocks from WRDS"
+            f"Successfully downloaded firm information for the observable universe of stocks ({len(result["gvkey"].unique())} firms) from WRDS"
         )
 
     return result
@@ -181,8 +181,8 @@ def download_monthly_inflation(config: CONFIGURATION) -> pd.Series:
 
     """
     # Unpack the config
-    start_date: dt.datetime = config.START_DATE_FACTORS_DOWNLOAD - dt.timedelta(days=31)
-    end_date: dt.datetime = config.END_DATE_FACTORS_DOWNLOAD
+    start_date: dt.datetime = config.START_DATE_ANALYSIS - dt.timedelta(days=31)
+    end_date: dt.datetime = config.END_DATE_ANALYSIS
 
     inflation_lib: str = config.INFLATION_LIB
     inflation_source: str = config.INFLATION_SOURCE

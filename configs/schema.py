@@ -280,8 +280,8 @@ class CONFIGURATION:
     INFLATION_SOURCE: str
 
     # Data downloading configs
-    START_DATE_FACTORS_DOWNLOAD: dt.datetime
-    END_DATE_FACTORS_DOWNLOAD: dt.datetime
+    START_DATE_ANALYSIS: dt.datetime
+    END_DATE_ANALYSIS: dt.datetime
 
     # Data-cleaning configs
     THRESHOLD_MISSING_SHARESOUTSTANDING: float
@@ -321,9 +321,9 @@ class CONFIGURATION:
 
     def __post_init__(self):
         # Make sure the data is well structured
-        if self.END_DATE_FACTORS_DOWNLOAD < self.START_DATE_FACTORS_DOWNLOAD:
+        if self.END_DATE_ANALYSIS < self.START_DATE_ANALYSIS:
             raise ValueError(
-                "END_DATE_FACTORS_DOWNLOAD must be after START_DATE_FACTORS_DOWNLOAD"
+                "END_DATE_ANALYSIS must be after START_DATE_ANALYSIS"
             )
 
         if self.INDUSTRY_CLASSIFICATION_METHOD not in {
