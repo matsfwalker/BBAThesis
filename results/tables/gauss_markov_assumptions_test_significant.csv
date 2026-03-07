@@ -1,4 +1,4 @@
-,Jarque-Bera,Time-series Homoscedasticity,Levene Test,Acorr Breusch Godfrey
+,Jarque-Bera,Time-series Homoscedasticity,Levene Test,Ljung Box
 Aircraft,False,True,True,True
 Apparel,True,False,False,True
 Automobiles and Trucks,False,True,False,True

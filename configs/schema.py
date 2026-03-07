@@ -317,7 +317,7 @@ class CONFIGURATION:
     # Statistical configurations
     T_TEST_FACTORS: Union[List[str], Literal["all"]]
     T_TEST_SIGNIFICANCE_LEVEL: float
-    P_THRESHOLD_JARQUE_BERA: float
+    P_THRESHOLD : float
 
     def __post_init__(self):
         # Make sure the data is well structured

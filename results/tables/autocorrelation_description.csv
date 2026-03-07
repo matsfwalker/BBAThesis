@@ -1,4 +1,4 @@
-,Acorr Breusch Godfrey
+,Ljung Box
 count,47.000000
 mean,0.452609
 std,0.301398
@@ -7,4 +7,4 @@ min,0.009489
 50%,0.427276
 75%,0.756087
 max,0.978032
-Significant (p < 0.05),44
+Reject H_0  (p < 0.05),44

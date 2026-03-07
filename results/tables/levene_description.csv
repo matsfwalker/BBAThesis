@@ -7,4 +7,4 @@ min,0.000258
 50%,0.039815
 75%,0.176318
 max,0.584297
-Significant (p < 0.05),True
+Reject H_0  (p < 0.05),True
