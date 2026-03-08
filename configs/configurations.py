@@ -26,7 +26,7 @@ CONFIG = CONFIGURATION(
     ###########
     LOG_INFO=True,
     logger=setup_logging(
-        name="Thesis", log_file=PATHCONFIG.LOGGING_DIR / "logging.log"
+        name="Thesis", log_file=PATHCONFIG.LOGGING_DIR / "logging.log", level="DEBUG"
     ),
     ###########
     # Sources #

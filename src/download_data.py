@@ -54,6 +54,8 @@ def download_fama_french_factors(
         config.logger.info(
             f"Successfully downloaded Fama-French factors from {lib_name} from {data_course}"
         )
+        config.logger.debug("Monthly factors sample:\n"+monthly_factors.sample(5) )
+
     return monthly_factors, yearly_factors
 
 
@@ -97,6 +99,8 @@ def download_prices_daily_wrds(
         config.logger.info(
             f"Successfully downloaded daily prices for the observable universe of stocks ({len(result["gvkey"].unique())} firms) from WRDS from {start_date} to {end_date}"
         )
+        config.logger.debug("Daily prices sample:\n"+
+            result.sample(5))
 
     return result
 
@@ -127,6 +131,11 @@ def download_firm_info_wrds(
         config.logger.info(
             f"Successfully downloaded firm information for the observable universe ({len(result["gvkey"].unique())} firms) of stocks from WRDS"
         )
+        config.logger.debug("Firm info sample:\n"+
+            result.sample(5)
+        )
+
+    print(result.head())
 
     return result
 
@@ -158,7 +167,10 @@ def download_sic_description_wrds(
 
     if config.LOG_INFO:
         config.logger.info(
-            f"Successfully downloaded firm information for the observable universe of stocks ({len(result["gvkey"].unique())} firms) from WRDS"
+            f"Successfully downloaded firm information for the observable universe of stocks ({len(result["siccode"].unique())} firms) from WRDS"
+        )
+        config.logger.debug("SIC codes sample:\n"+
+            result.sample(5)
         )
 
     return result
@@ -204,6 +216,9 @@ def download_monthly_inflation(config: CONFIGURATION) -> pd.Series:
     if config.LOG_INFO:
         config.logger.info(
             f"Successfully downloaded inflation info from {inflation_lib} from {inflation_source} from {start_date} to {end_date}"
+        )
+        config.logger.debug("Monthly inflation sample:\n"+
+            monthly_inflation.sample(5)
         )
 
     return monthly_inflation
@@ -296,12 +311,17 @@ def import_ff_portfolios(config: CONFIGURATION) -> pd.DataFrame:
                     }
                 )
 
+    result: pd.DataFrame = pd.DataFrame(rows)
+
     if config.LOG_INFO:
         config.logger.info(
             f"Successfully imported Fama-French industry portfolios from {config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS}.txt"
         )
+        config.logger.debug("Fama-French industry portfolios sample:\n"+
+            result.sample(5)
+        )
 
-    return pd.DataFrame(rows)
+    return result
 
 
 # Main functions

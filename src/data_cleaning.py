@@ -111,6 +111,9 @@ def clean_factors(
 
     if config.LOG_INFO:
         config.logger.info("Cleaned the factor data")
+        config.logger.debug("Monthly factor data sample:\n" +
+            factors_monthly_raw_decimal.head(5)
+        )
 
     return factors_monthly_raw_decimal, factors_yearly_raw_decimal
 
@@ -157,16 +160,20 @@ def clean_ff_industry_portfolio(
                         "industry_id": row["industry_id"],
                     }
                 )
+    result: pd.DataFrame = pd.DataFrame(sic_codes)
 
     if config.LOG_INFO:
         config.logger.info(
             "Finisehd cleaning Fama French industry portfolio data by aggregating to one row per industry and date"
         )
+        config.logger.debug("Cleaned Fama French industry portfolio data sample:\n" +
+            result.head(5)
+        )
 
-    return pd.DataFrame(sic_codes)
 
+    return result
 
-def remove_firms_missing_sharesoutstanding(
+def _remove_firms_missing_sharesoutstanding(
     stock_price: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
@@ -236,17 +243,20 @@ def clean_stock_prices(
     )
 
     # Remove firms with missing shares outstanding
-    stock_prices_cleaned = remove_firms_missing_sharesoutstanding(
+    stock_prices_cleaned = _remove_firms_missing_sharesoutstanding(
         stock_prices_raw, config
     )
 
     if config.LOG_INFO:
         config.logger.info("Cleaned the stock prices")
+        config.logger.debug("Cleaned stock prices sample:\n" +
+            stock_prices_cleaned.head(5)
+        )
 
     return stock_prices_cleaned
 
 
-def fill_missing_values(
+def _fill_missing_values(
     stock_price: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
@@ -343,13 +353,16 @@ def intersect_stockprices_monthlyfactors(
     ].sort_index()
 
     # Fill the missing values
-    stock_prices_filled: pd.DataFrame = fill_missing_values(
+    stock_prices_filled: pd.DataFrame = _fill_missing_values(
         stock_prices_common_date, config
     )
 
     if config.LOG_INFO:
         config.logger.info(
             "Intersected stock prices and monthly factors on common dates index"
+        )
+        config.logger.debug("Stock prices after intersection and filling missing values sample:\n" +
+            stock_prices_filled.head(5)
         )
 
     return stock_prices_filled
@@ -373,6 +386,9 @@ def clean_firm_info(firm_info_raw: pd.DataFrame, config: CONFIGURATION) -> pd.Da
 
     if config.LOG_INFO:
         config.logger.info("Cleaned the firm info")
+        config.logger.debug("Cleaned firm info sample:\n" +
+            firm_info_raw.head(5)
+        )
 
     return firm_info_raw
 
@@ -403,6 +419,9 @@ def clean_sic_desc_raw(
     if config.LOG_INFO:
         config.logger.info(
             "Cleaned the SIC description data by removing inactive codes and status column"
+        )
+        config.logger.debug("Cleaned SIC description sample:\n" +
+            sic_desc_raw.head(5)
         )
 
     return sic_desc_raw
@@ -447,6 +466,9 @@ def calculate_cum_inflation_multiplier(
         config.logger.info(
             "Calculated the cumulative inflation multiplier from the MoM inflation"
         )
+        config.logger.debug("Cumulative inflation multiplier sample:\n" +
+            monthly_inflation_processed.head(5)
+        )
 
     return monthly_inflation_processed
 
@@ -483,6 +505,9 @@ def intersect_stockprices_inflation(
     if config.LOG_INFO:
         config.logger.info(
             "Intersected stock prices and inflation data on common dates index"
+        )
+        config.logger.debug("Inflation data after intersection and filling missing values sample:\n" +
+            inflation_filled.head(5)
         )
 
     return inflation_filled
