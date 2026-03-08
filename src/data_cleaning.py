@@ -169,6 +169,7 @@ def clean_ff_industry_portfolio(
 
     return result
 
+
 def _remove_firms_missing_sharesoutstanding(
     stock_price: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
@@ -207,6 +208,31 @@ def _remove_firms_missing_sharesoutstanding(
         )
     return result
 
+def _remove_non_significant_exchanges(
+    stock_price: pd.DataFrame, config: CONFIGURATION)->pd.DataFrame:
+    """
+    Function to remove firms listed on stock exchanges that should not be included.
+
+    Parameters
+    ----------
+    stock_price : pd.DataFrame
+        Dataframe containing the info about the stock and shares outstanding
+    config : CONFIGURATION
+        Configuration of the project
+        
+    Returns
+    -------
+    pd.DataFrame
+        New dataframe without the firms listed on non significant stock exchanges"""
+    
+    result: pd.DataFrame = stock_price[~stock_price["exchange"].isin(["Toronto Stock Exchange"])]
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Removed firms listed on non significant stock exchanges (e.g. Toronto Stock Exchange). Removed {stock_price['gvkey'].nunique() - result['gvkey'].nunique()} firms"
+        )
+        
+    return result
 
 def clean_stock_prices(
     stock_prices_raw: pd.DataFrame, config: CONFIGURATION
@@ -242,6 +268,9 @@ def clean_stock_prices(
     stock_prices_cleaned = _remove_firms_missing_sharesoutstanding(
         stock_prices_raw, config
     )
+
+    stock_prices_cleaned = _remove_non_significant_exchanges(stock_prices_cleaned, config)
+
 
     if config.LOG_INFO:
         config.logger.info(f"Cleaned the stock prices. {stock_prices_raw['gvkey'].nunique()} -> {stock_prices_cleaned['gvkey'].nunique()} firms")
