@@ -1,6 +1,6 @@
 import datetime as dt
 import warnings
-from typing import Any, Dict, Tuple, Union, cast, Optional
+from typing import Any, Dict, Tuple, Union, cast, Optional, Iterator, List
 import re
 
 import pandas as pd
@@ -54,9 +54,40 @@ def download_fama_french_factors(
         config.logger.info(
             f"Successfully downloaded Fama-French factors from {lib_name} from {data_course}"
         )
-        config.logger.debug("Monthly factors sample:\n"+monthly_factors.sample(5) )
+        config.logger.debug(f"Monthly factors sample:\n{monthly_factors.sample(5)}")
 
     return monthly_factors, yearly_factors
+
+
+def chunkify_dates(start_date: dt.datetime, end_date: dt.datetime)->Iterator[Tuple[dt.datetime, dt.datetime]]:
+    """
+    Function to create an iterator of the dates between start_date and end_date in chunks of 1 year.
+    This reduces the time to run one query.
+    
+    Parameters
+    ----------
+    start_date : dt.datetime
+        Start date of the period to chunkify
+    end_date : dt.datetime
+        End date of the period to chunkify
+    
+    Returns
+    -------
+    Iterator[Tuple[dt.datetime, dt.datetime]]
+        Iterator of tuples containing the start and end date of each chunk
+    """
+    current = start_date
+
+    while current <= end_date:
+        next_year = dt.datetime(current.year + 1, 1, 1)
+        chunk_end = min(next_year - dt.timedelta(days=1), end_date)
+
+        yield (
+            current.strftime("%Y-%m-%d"),
+            chunk_end.strftime("%Y-%m-%d"),
+        )
+
+        current = chunk_end + dt.timedelta(days=1)
 
 
 def download_prices_daily_wrds(
@@ -81,26 +112,32 @@ def download_prices_daily_wrds(
     # Unpack the config
     start_date: dt.datetime = config.START_DATE_ANALYSIS - dt.timedelta(days=31)
     end_date: dt.datetime = config.END_DATE_ANALYSIS - dt.timedelta(days=31)
-    price_query_params: Tuple[str, str] = (
-        start_date.strftime("%Y-%m-%d"),
-        end_date.strftime("%Y-%m-%d"),
-    )
 
     # Get the SQL query
     sql_query_daily_price: str = config.paths.sql_query(
         "daily_market_prices"
     ).read_text()
 
-    result: pd.DataFrame = con.raw_sql(
-        sql_query_daily_price, params=price_query_params, date_cols=["date"]
-    )
+    frames: List[pd.DataFrame] = []
+
+    for price_query_params in chunkify_dates(start_date, end_date):
+        result_subquery: pd.DataFrame = con.raw_sql(
+            sql_query_daily_price, params=price_query_params, date_cols=["date"]
+        )
+        frames.append(result_subquery)
+
+        if config.LOG_INFO:
+            config.logger.info(
+                f"Downloaded daily prices for the observable universe of stocks from WRDS from {price_query_params[0]} to {price_query_params[1]}"
+            )
+
+    result = pd.concat(frames, ignore_index=True)
 
     if config.LOG_INFO:
         config.logger.info(
-            f"Successfully downloaded daily prices for the observable universe of stocks ({len(result["gvkey"].unique())} firms) from WRDS from {start_date} to {end_date}"
+            f"Successfully downloaded daily prices for the observable universe of stocks ({len(result['gvkey'].unique())} firms) from WRDS from {start_date} to {end_date}"
         )
-        config.logger.debug("Daily prices sample:\n"+
-            result.sample(5))
+        config.logger.debug(f"Daily prices sample:\n{result.sample(5)}")
 
     return result
 
@@ -131,8 +168,7 @@ def download_firm_info_wrds(
         config.logger.info(
             f"Successfully downloaded firm information for the observable universe ({len(result["gvkey"].unique())} firms) of stocks from WRDS"
         )
-        config.logger.debug("Firm info sample:\n"+
-            result.sample(5)
+        config.logger.debug(f"Firm info sample:\n{result.sample(5)}"
         )
 
     print(result.head())
@@ -169,8 +205,7 @@ def download_sic_description_wrds(
         config.logger.info(
             f"Successfully downloaded firm information for the observable universe of stocks ({len(result["siccode"].unique())} firms) from WRDS"
         )
-        config.logger.debug("SIC codes sample:\n"+
-            result.sample(5)
+        config.logger.debug(f"SIC codes sample:\n{result.sample(5)}"
         )
 
     return result
@@ -217,8 +252,7 @@ def download_monthly_inflation(config: CONFIGURATION) -> pd.Series:
         config.logger.info(
             f"Successfully downloaded inflation info from {inflation_lib} from {inflation_source} from {start_date} to {end_date}"
         )
-        config.logger.debug("Monthly inflation sample:\n"+
-            monthly_inflation.sample(5)
+        config.logger.debug(f"Monthly inflation sample:\n{monthly_inflation.sample(5)}"
         )
 
     return monthly_inflation
@@ -317,8 +351,7 @@ def import_ff_portfolios(config: CONFIGURATION) -> pd.DataFrame:
         config.logger.info(
             f"Successfully imported Fama-French industry portfolios from {config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS}.txt"
         )
-        config.logger.debug("Fama-French industry portfolios sample:\n"+
-            result.sample(5)
+        config.logger.debug(f"Fama-French industry portfolios sample:\n{result.sample(5)}"
         )
 
     return result

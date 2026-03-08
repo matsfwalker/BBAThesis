@@ -736,7 +736,7 @@ def get_returns_stocks(stock_prices: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Reset the date as index and sort it
-    returns: pd.DataFrame = sorted_prices.set_index("date").sort_index()
+    returns: pd.DataFrame = sorted_prices.set_index("date").dropna().sort_index()
 
     return returns
 

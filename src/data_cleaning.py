@@ -111,9 +111,7 @@ def clean_factors(
 
     if config.LOG_INFO:
         config.logger.info("Cleaned the factor data")
-        config.logger.debug("Monthly factor data sample:\n" +
-            factors_monthly_raw_decimal.head(5)
-        )
+        config.logger.debug(f"Monthly factor data sample:\n{factors_monthly_raw_decimal.head(5)}")
 
     return factors_monthly_raw_decimal, factors_yearly_raw_decimal
 
@@ -164,11 +162,9 @@ def clean_ff_industry_portfolio(
 
     if config.LOG_INFO:
         config.logger.info(
-            "Finisehd cleaning Fama French industry portfolio data by aggregating to one row per industry and date"
+            "Finished cleaning Fama French industry portfolio data by aggregating to one row per industry and date"
         )
-        config.logger.debug("Cleaned Fama French industry portfolio data sample:\n" +
-            result.head(5)
-        )
+        config.logger.debug(f"Cleaned Fama French industry portfolio data sample:\n{result.head(5)}")
 
 
     return result
@@ -248,10 +244,8 @@ def clean_stock_prices(
     )
 
     if config.LOG_INFO:
-        config.logger.info("Cleaned the stock prices")
-        config.logger.debug("Cleaned stock prices sample:\n" +
-            stock_prices_cleaned.head(5)
-        )
+        config.logger.info(f"Cleaned the stock prices. {stock_prices_raw['gvkey'].nunique()} -> {stock_prices_cleaned['gvkey'].nunique()} firms")
+        config.logger.debug(f"Cleaned stock prices sample:\n{stock_prices_cleaned.head(5)}")
 
     return stock_prices_cleaned
 
@@ -337,7 +331,7 @@ def intersect_stockprices_monthlyfactors(
                     [[g.index.get_level_values("gvkey")[0]], full_idx],
                     names=["gvkey", "date"],
                 )
-            ).ffill(limit=2)
+            ).infer_objects(copy=False).ffill(limit=2)
         )
         .reset_index(level="gvkey")
     )
@@ -361,9 +355,7 @@ def intersect_stockprices_monthlyfactors(
         config.logger.info(
             "Intersected stock prices and monthly factors on common dates index"
         )
-        config.logger.debug("Stock prices after intersection and filling missing values sample:\n" +
-            stock_prices_filled.head(5)
-        )
+        config.logger.debug(f"Stock prices after intersection and filling missing values sample:\n{stock_prices_filled.head(5)}")
 
     return stock_prices_filled
 
@@ -386,9 +378,7 @@ def clean_firm_info(firm_info_raw: pd.DataFrame, config: CONFIGURATION) -> pd.Da
 
     if config.LOG_INFO:
         config.logger.info("Cleaned the firm info")
-        config.logger.debug("Cleaned firm info sample:\n" +
-            firm_info_raw.head(5)
-        )
+        config.logger.debug(f"Cleaned firm info sample:\n{firm_info_raw.head(5)}")
 
     return firm_info_raw
 
@@ -420,8 +410,7 @@ def clean_sic_desc_raw(
         config.logger.info(
             "Cleaned the SIC description data by removing inactive codes and status column"
         )
-        config.logger.debug("Cleaned SIC description sample:\n" +
-            sic_desc_raw.head(5)
+        config.logger.debug(f"Cleaned SIC description sample:\n +{sic_desc_raw.head(5)}"
         )
 
     return sic_desc_raw
@@ -466,8 +455,7 @@ def calculate_cum_inflation_multiplier(
         config.logger.info(
             "Calculated the cumulative inflation multiplier from the MoM inflation"
         )
-        config.logger.debug("Cumulative inflation multiplier sample:\n" +
-            monthly_inflation_processed.head(5)
+        config.logger.debug(f"Cumulative inflation multiplier sample:\n{monthly_inflation_processed.head(5)}"
         )
 
     return monthly_inflation_processed
@@ -506,8 +494,7 @@ def intersect_stockprices_inflation(
         config.logger.info(
             "Intersected stock prices and inflation data on common dates index"
         )
-        config.logger.debug("Inflation data after intersection and filling missing values sample:\n" +
-            inflation_filled.head(5)
+        config.logger.debug(f"Inflation data after intersection and filling missing values sample:\n{inflation_filled.head(5)}"
         )
 
     return inflation_filled

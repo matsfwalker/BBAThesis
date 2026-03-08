@@ -2,7 +2,7 @@ SELECT
     a.gvkey,
     a.datadate AS date,
     a.prccd AS close,
-    a.cshoc AS shares_outstanding,
+    a.cshoc AS sharesoutstanding,
     b.exchgdesc AS exchange
 FROM (
     SELECT
