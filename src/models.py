@@ -4,18 +4,18 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 import pandas as pd
 import statsmodels.api as sm
 
-from configs import CONFIG, CONFIGURATION, FILENAMES_CLASS
+from configs import PROJ_CONFIG, CONFIGURATION_CLASS, FILENAMES_CLASS
 
 
 def download_processed_data(
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Function to download the processed data and return it as a Dataframe
 
     Parameters
     ----------
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -55,7 +55,7 @@ def download_processed_data(
 
 def extract_factor_loadings(
     factors: pd.DataFrame,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
     returns: Union[pd.Series, pd.DataFrame],
     rf_label: str = "RF",
 ) -> pd.DataFrame:
@@ -72,7 +72,7 @@ def extract_factor_loadings(
         Expects a column of the risk-free rate (canonically called RF).
         Expects a datetime index.
         Expects absolute factors as a number (not percentages).
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
         Configurations of the model
     returns : Union[pd.Series, pd.DataFrame]∫
         Series containing the dependent variable (asset returns).
@@ -162,7 +162,7 @@ def extract_factor_loadings(
 def factor_model_return_predictor(
     factor_values: pd.DataFrame,
     factor_loadings: pd.DataFrame,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
     rf_label: str = "RF",
     beta_label: str = "Beta",
 ) -> pd.DataFrame:
@@ -182,7 +182,7 @@ def factor_model_return_predictor(
         DataFrame containing the factor loadings for each asset.
         Expects the columns to be the asset ticker.
         Expects a MultiIndex with levels ["Statistic", "Factor"].
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
         Configurations of the model
     rf_label : str = "RF"
         Optional argument to specify the label of the column in X representing the risk-free rate.
@@ -222,7 +222,7 @@ def factor_model_return_predictor(
 def compare_pred_actual(
     pred_return_monthly: pd.DataFrame,
     portfolio_returns_monthly: pd.DataFrame,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> pd.DataFrame:
     """
     Function to compare the predicted and actual return and add the residual
@@ -233,7 +233,7 @@ def compare_pred_actual(
         The predicted returns per month
     portfolio_returns_monthly : pd.DataFrame
         The actual returns per month
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
         Configurations of the model
 
     Returns
@@ -289,7 +289,7 @@ def gibbons_ross_shanken_test(
 
 
 def t_test_significance(
-    model_parameters: pd.DataFrame, config: CONFIGURATION, t_stat_index: str = "Tstat"
+    model_parameters: pd.DataFrame, config: CONFIGURATION_CLASS, t_stat_index: str = "Tstat"
 ) -> pd.DataFrame:
     """
     Function to test the significance of model parameters using t-statistics.
@@ -303,7 +303,7 @@ def t_test_significance(
         Parameters of the model
         Expected to have one row containing the Tstat per parameter.
         Expects the Tstat to be in a seperate multi-index
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configurations of the model
     t_stat_index : str = "Tstat"
         Name of the index in the multi-index representing the t-statistics.
@@ -466,7 +466,7 @@ def _date_ranges_windows(
 
 def construct_date_ranges(
     df: pd.DataFrame,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> Dict[str, Tuple[dt.datetime, dt.datetime]]:
     """
     Function to create the date ranges depending on the config.
@@ -475,7 +475,7 @@ def construct_date_ranges(
     ----------
     df : pd.DataFrame
         DataFrame containing the data with a datetime index to create the date ranges from.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the model containing the parameters to create the date ranges.
 
     Returns
@@ -522,7 +522,7 @@ def construct_date_ranges(
 def factor_loadings_over_time(
     factors: pd.DataFrame,
     returns: Union[pd.Series, pd.DataFrame],
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
     rf_label: str = "RF",
 ) -> pd.DataFrame:
     """
@@ -597,7 +597,7 @@ def factor_loadings_over_time(
 
 
 def build_model(
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Orchestrator function to build the model.
@@ -605,7 +605,7 @@ def build_model(
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -644,7 +644,7 @@ def build_model(
 
     # Calculate the factors in different periods
     ff_factors_over_time: pd.DataFrame = factor_loadings_over_time(
-        factors=ff_factors_monthly, returns=portfolio_returns_monthly, config=CONFIG
+        factors=ff_factors_monthly, returns=portfolio_returns_monthly, config=PROJ_CONFIG
     )
 
     return factor_loadings_monthly, comparison_monthly_returns, ff_factors_over_time
@@ -654,7 +654,7 @@ def save_model(
     factor_loadings_monthly: pd.DataFrame,
     comparison_monthly_returns: pd.DataFrame,
     ff_factors_over_time: pd.DataFrame,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> None:
     """
     Function to save the info of the model in different places
@@ -667,7 +667,7 @@ def save_model(
         Dataframe with the predicted, actual and residual returns of the portfolios
     ff_factors_over_time : pd.DataFrame
         Dataframe with the factor loadings for different periods
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -690,13 +690,13 @@ def save_model(
         config.logger.info("Saved model results successfully")
 
 
-def build_save_model(config: CONFIGURATION) -> None:
+def build_save_model(config: CONFIGURATION_CLASS) -> None:
     """
     Main orchestrator function to build and then save the model
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         COnfiguration of the project
 
     Returns
@@ -716,4 +716,4 @@ def build_save_model(config: CONFIGURATION) -> None:
 
 
 if __name__ == "__main__":
-    build_save_model(CONFIG)
+    build_save_model(PROJ_CONFIG)

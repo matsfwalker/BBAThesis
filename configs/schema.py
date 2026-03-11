@@ -181,6 +181,7 @@ class PATH_ANALYSIS_CLASS(BasePathConfig):
     def results_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="results", date=date)
 
+
 # Paths for the entire program (all access)
 @dataclass(frozen=True, slots=True)
 class PATH_CONFIG_CLASS(BasePathConfig):
@@ -263,7 +264,7 @@ class PATH_CONFIG_CLASS(BasePathConfig):
 
 # Configurations of the entire project
 @dataclass(frozen=True, slots=True)
-class CONFIGURATION:
+class CONFIGURATION_CLASS:
     """Configuration dataclass to group all configurations."""
 
     # Paths
@@ -285,7 +286,9 @@ class CONFIGURATION:
 
     # Data-cleaning configs
     THRESHOLD_MISSING_SHARESOUTSTANDING: float
+    MIN_STOCK_PRICE: float
     EXCHANGES_TO_REMOVE: List[str]
+    MAX_MONTHLY_RETURN: Optional[float]
 
     # Portfolio creation configs
     CUTOFF_FIRMS_PER_PORTFOLIO: int
@@ -417,7 +420,7 @@ class CONFIGURATION:
 
 # Plotting configurations
 @dataclass(frozen=True, slots=True)
-class PLOTTING_CONFIGURATIONS:
+class PLOTTING_CONFIGURATIONS_CLASS:
     TIMESPANS_TO_PLOT: List[Dict[str, Union[str, pd.Timestamp, dt.datetime]]]
 
 

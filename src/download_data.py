@@ -7,19 +7,19 @@ import pandas as pd
 import pandas_datareader.data as web
 import wrds  # Wharton Research Data Services
 
-from configs import CONFIG, CONFIGURATION, FILENAMES_CLASS, DATAFRAME_CONTAINER
+from configs import PROJ_CONFIG, CONFIGURATION_CLASS, FILENAMES_CLASS, DATAFRAME_CONTAINER
 
 ####################
 # Helper Functions #
 ####################
 
-def connect_wrds(config: CONFIGURATION) -> wrds.Connection:
+def connect_wrds(config: CONFIGURATION_CLASS) -> wrds.Connection:
     """
     Function to connect to the WRDS database using the credentials specified in the configuration.
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -76,14 +76,14 @@ def chunkify_dates(start_date: dt.datetime, end_date: dt.datetime)->Iterator[Tup
 
 # Sub-download functions
 def download_fama_french_factors(
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Downloads Fama-French factors from the specified data source.
 
     Parameters
     ----------
-    config : CONFIGURATION:
+    config : CONFIGURATION_CLASS:
         Configuration object containing parameters for the download.
 
     Returns
@@ -127,13 +127,13 @@ def download_fama_french_factors(
 # FF Industry Portfolios #
 ##########################
 
-def import_ff_portfolios(config: CONFIGURATION) -> pd.DataFrame:
+def import_ff_portfolios(config: CONFIGURATION_CLASS) -> pd.DataFrame:
     """
     Function to import the Fama-French portfolios from the downloaded files.
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -204,14 +204,14 @@ def import_ff_portfolios(config: CONFIGURATION) -> pd.DataFrame:
 # Inflation #
 #############
 
-def download_monthly_inflation(config: CONFIGURATION) -> pd.Series:
+def download_monthly_inflation(config: CONFIGURATION_CLASS) -> pd.Series:
     """
     Function to download monthly inflation data for the entire period to discount values using the time value of money.
     This is the MoM inflation, not inflation compared to previous year.
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -256,7 +256,7 @@ def download_monthly_inflation(config: CONFIGURATION) -> pd.Series:
 ##################
 
 def download_monthly_market_info_wrds(
-    con: wrds.Connection, config: CONFIGURATION
+    con: wrds.Connection, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to query the monthly info, including prices, returns, etc. for the observable universe of stocks from WRDS.
@@ -265,7 +265,7 @@ def download_monthly_market_info_wrds(
     ----------
     con : wrds.Connection
         Connection object to the WRDS database.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
     Returns
     -------
@@ -299,15 +299,17 @@ def download_monthly_market_info_wrds(
 
     if config.LOG_INFO:
         config.logger.info(
-            f"Successfully downloaded daily prices for the observable universe of stocks ({len(result['gvkey'].unique())} firms) from WRDS from {start_date} to {end_date}"
+            f"Successfully downloaded monthly prices for the observable universe of stocks ({len(result['gvkey'].unique())} firms) from WRDS from {start_date} to {end_date}"
         )
-        config.logger.debug(f"Daily prices sample:\n{result.sample(5)}")
+        config.logger.debug(f"Monthly prices sample:\n{result.sample(5)}")
+
+    print(result.describe())
 
     return result
 
 
 def download_firm_info_wrds(
-    con: wrds.Connection, config: CONFIGURATION
+    con: wrds.Connection, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to query information for the firms in the observable universe of stocks from WRDS.
@@ -317,7 +319,7 @@ def download_firm_info_wrds(
     ----------
     con : wrds.Connection
         Connection object to the WRDS database.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         configuration of the project
     Returns
     -------
@@ -339,7 +341,7 @@ def download_firm_info_wrds(
 
 
 def download_sic_description_wrds(
-    con: wrds.Connection, config: CONFIGURATION
+    con: wrds.Connection, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to retrieve information about different sic codes from WRDS.
@@ -351,7 +353,7 @@ def download_sic_description_wrds(
     ----------
     con : wrds.Connection
         Connection object to the WRDS database.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -377,11 +379,11 @@ def download_sic_description_wrds(
 # Main functions #
 ##################
 
-def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
+def download_data(config: CONFIGURATION_CLASS) -> DATAFRAME_CONTAINER:
     """Donwloads the entire data necessary for the project.
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -431,7 +433,7 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     )
 
 
-def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
+def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION_CLASS) -> None:
     """
     Function to save the data in the right location.
     Parameters
@@ -439,7 +441,7 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
     data : DATAFRAME_CONTAINER
         Container of 5 pd.DataFrames of the different info
 
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -455,23 +457,23 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
     if ff5_monthly is None or ff5_yearly is None:
         raise ValueError("Fama-French factors data frames cannot be None")
 
-    ff5_monthly.to_csv(CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_factors_monthly))
-    ff5_yearly.to_csv(CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_factors_yearly))
+    ff5_monthly.to_csv(PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_factors_monthly))
+    ff5_yearly.to_csv(PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_factors_yearly))
 
     data.monthly_stock_info.to_csv(
-        CONFIG.paths.raw_out(FILENAMES_CLASS.Stock_prices), index=False
+        PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.Stock_prices), index=False
     )
 
-    data.firm_info.to_csv(CONFIG.paths.raw_out(FILENAMES_CLASS.Firm_info), index=False)
+    data.firm_info.to_csv(PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.Firm_info), index=False)
 
-    data.sic_info.to_csv(CONFIG.paths.raw_out(FILENAMES_CLASS.Sic_description), index=False)
+    data.sic_info.to_csv(PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.Sic_description), index=False)
 
     data.monthly_inflation.to_csv(
-        CONFIG.paths.raw_out(FILENAMES_CLASS.Inflation_info_monthly), index=True
+        PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.Inflation_info_monthly), index=True
     )
 
     data.ff_industry_portfolios.to_csv(
-        CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_industry_portfolios), index=False
+        PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_industry_portfolios), index=False
     )
 
     if config.LOG_INFO:
@@ -480,14 +482,14 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
     return
 
 
-def download_save_raw_data(config: CONFIGURATION) -> None:
+def download_save_raw_data(config: CONFIGURATION_CLASS) -> None:
     """
     Function to download and then save all necessary data.
     This function orchestrates the other functions.
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the file
 
     Returns
@@ -500,4 +502,4 @@ def download_save_raw_data(config: CONFIGURATION) -> None:
 
 
 if __name__ == "__main__":
-    download_save_raw_data(CONFIG)
+    download_save_raw_data(PROJ_CONFIG)

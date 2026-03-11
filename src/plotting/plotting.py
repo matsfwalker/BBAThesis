@@ -3,16 +3,16 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import List, Union, Literal, Tuple, Optional
-from configs import PLOTTING_CONFIGURATIONS
+from configs import PLOTTING_CONFIGURATIONS_CLASS
 from .style import set_plot_style, get_palette, colour_cycle, colour_map
 from .utils import as_float
 
 
 class PLOTTER:
     def __init__(
-        self, config: PLOTTING_CONFIGURATIONS, figsize: Optional[Tuple[int, int]] = None
+        self, config: PLOTTING_CONFIGURATIONS_CLASS, figsize: Optional[Tuple[int, int]] = None
     ) -> None:
-        self.config: PLOTTING_CONFIGURATIONS = config
+        self.config: PLOTTING_CONFIGURATIONS_CLASS = config
 
         self.figsize = figsize if figsize is not None else (10, 6)
         self.fontsize_header: float = 18.0

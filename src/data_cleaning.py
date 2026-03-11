@@ -1,19 +1,19 @@
 from typing import Tuple, List, Dict, Union, Optional
 import pandas as pd
 # Import the configurations
-from configs import CONFIG, CONFIGURATION, FILENAMES_CLASS, DATAFRAME_CONTAINER
+from configs import PROJ_CONFIG, CONFIGURATION_CLASS, FILENAMES_CLASS, DATAFRAME_CONTAINER
 
 ######################
 # Import and Exports #
 ######################
 
-def download_raw_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
+def download_raw_data(config: CONFIGURATION_CLASS) -> DATAFRAME_CONTAINER:
     """
     Function to download all of the raw data.
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         COnfiguration of the project
 
     Returns
@@ -80,7 +80,7 @@ def download_raw_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
 
 def save_processed_data(
     data_processed: DATAFRAME_CONTAINER,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> None:
     """
     Function to save all of the processed data in the data/processed dir.
@@ -89,7 +89,7 @@ def save_processed_data(
     ----------
     data_processed: DATAFRAME_CONTAINER
         Container containing the all processed dataframes of the project
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -144,7 +144,7 @@ def save_processed_data(
 def clean_factors(
     factors_monthly_raw: pd.DataFrame,
     factors_yearly_raw: pd.DataFrame,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Function to clean the monthly and yearly factor info
@@ -155,7 +155,7 @@ def clean_factors(
         Dataframe containing the monthly data for the factors
     factors_yearly_raw : pd.DataFrame
         Dataframe containing the yearly data for the factors
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -185,7 +185,7 @@ def clean_factors(
 #####################
 
 def clean_ff_industry_portfolio(
-    ff_industry_portfolios_raw: pd.DataFrame, config: CONFIGURATION
+    ff_industry_portfolios_raw: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to clean the Fama French industry portfolio data.
@@ -195,7 +195,7 @@ def clean_ff_industry_portfolio(
     ----------
     ff_industry_portfolios_raw: pd.DataFrame
         Raw Fama French industry portfolio data
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -243,7 +243,7 @@ def clean_ff_industry_portfolio(
 ######################
 
 def calculate_cum_inflation_multiplier(
-    raw_monthly_inflation: pd.DataFrame, config: CONFIGURATION
+    raw_monthly_inflation: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to convert MoM inflation into the dicount multiplier from present value.
@@ -253,7 +253,7 @@ def calculate_cum_inflation_multiplier(
     ----------
     raw_monthly_inflation: pd.DataFrame
        MoM inflation
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
         Configuration of the Project
 
     Returns
@@ -288,7 +288,7 @@ def calculate_cum_inflation_multiplier(
 
 
 def intersect_stockprices_inflation(
-    df_idx_to_keep: pd.DataFrame, monthly_inflation: pd.DataFrame, config: CONFIGURATION
+    df_idx_to_keep: pd.DataFrame, monthly_inflation: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to intersect the stockprices with the inflation.
@@ -300,7 +300,7 @@ def intersect_stockprices_inflation(
         Dataframe with the already intersected index. This index values should be kept.
     monthly_inflation: pd.DataFrame
         Dataframe of the monthyl inflation that needs to be intersected
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -331,7 +331,7 @@ def intersect_stockprices_inflation(
 #######################
 
 def _remove_firms_missing_sharesoutstanding(
-    stock_price: pd.DataFrame, config: CONFIGURATION
+    stock_price: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to remove those firms that have less shares outstanding than the threshold.
@@ -341,7 +341,7 @@ def _remove_firms_missing_sharesoutstanding(
     ----------
     stock_price : pd.DataFrame
         Dataframe containing the info about the stock and shares outstanding
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -367,7 +367,7 @@ def _remove_firms_missing_sharesoutstanding(
 
 
 def _remove_non_significant_exchanges(
-    stock_price: pd.DataFrame, config: CONFIGURATION)->pd.DataFrame:
+    stock_price: pd.DataFrame, config: CONFIGURATION_CLASS)->pd.DataFrame:
     """
     Function to remove firms listed on stock exchanges that should not be included.
 
@@ -375,7 +375,7 @@ def _remove_non_significant_exchanges(
     ----------
     stock_price : pd.DataFrame
         Dataframe containing the info about the stock and shares outstanding
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
         
     Returns
@@ -395,8 +395,100 @@ def _remove_non_significant_exchanges(
     return result
 
 
+def _remove_small_firms(
+    monthly_stock_prices_raw: pd.DataFrame,
+    config: CONFIGURATION_CLASS
+)->pd.DataFrame:
+    """
+    Function to remove the entries for the firms that have a too small stock price.
+    
+    Parameters
+    ----------
+    monthly_stock_prices_raw: pd.DataFrame
+        Monthly stock prices
+    config
+        Configuration of the project
+        
+    Returns
+    -------
+    pd.DataFrame
+        The monthly entries without the firms"""
+    
+    num_entries_start: int = monthly_stock_prices_raw.shape[0]
+
+    result: pd.DataFrame = monthly_stock_prices_raw[monthly_stock_prices_raw["close"] > config.MIN_STOCK_PRICE]
+
+    num_entries_end: int = result.shape[0]
+
+    if config.logger:
+        config.logger.info(
+            f"Removed firms with share price of less than {config.MIN_STOCK_PRICE}.\n\
+            Removed {num_entries_start-num_entries_end} entries"
+        )
+
+    return result
+
+
+def _clip_monthly_return(
+    monthly_stock_returns: pd.DataFrame,
+    config: CONFIGURATION_CLASS
+)->pd.DataFrame:
+    """
+    Function to clip the return of an asset at a certain value.
+    This avoids excessively large returns.
+    Performs MIN(return_i, max_return) operation on each period.
+    For sanity check, it also clips losses at 100%.
+
+    Parameters
+    ----------
+    monthly_stock_returns: pd.DataFrame
+        Monthly stock prices with return in decimal format
+    config: CONFIGURATION_CLASS
+        Configuration of the project
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the clipped returns.
+        Note that the shape stays the same.
+    """
+    monthly_stock_returns["return"] = monthly_stock_returns["return"].clip(-1, config.MAX_MONTHLY_RETURN)
+    return monthly_stock_returns
+
+
+def _format_data_monthly_stock_prices(
+    monthly_stock_prices: pd.DataFrame,
+    config: CONFIGURATION_CLASS
+) -> pd.DataFrame:
+    """
+    Function to format the data of the stock prices
+    
+    Parameters
+    ----------
+    monthly_stock_prices: pd.DataFrame
+        Raw monthly stock prices to format
+    config: CONFIGURATION_CLASS
+        Configuration of the project
+        
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe of the returns in the right format"""
+    
+    # Convert numeric columns to numbers
+    numeric_cols = ["close", "sharesoutstanding", "return"]
+    monthly_stock_prices[numeric_cols] = monthly_stock_prices[numeric_cols].apply(
+        pd.to_numeric, errors="coerce"
+    )
+
+    # Convert return from percentage to decimal
+    monthly_stock_prices["return"] = monthly_stock_prices["return"]/100
+
+    return monthly_stock_prices
+
+
 def clean_stock_prices(
-    monthly_stock_prices_raw: pd.DataFrame, config: CONFIGURATION
+    monthly_stock_prices_raw: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to clean the stock prices
@@ -405,7 +497,7 @@ def clean_stock_prices(
     ----------
     monthly_stock_prices_raw : pd.DataFrame
         Dataframe containing the raw stock prices
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -419,29 +511,32 @@ def clean_stock_prices(
     # Drop duplicate gvkey-date entries
     monthly_stock_prices_raw = monthly_stock_prices_raw.drop_duplicates(subset=["gvkey", "date"])
 
-    # Convert numeric columns to numbers
-    numeric_cols = ["close", "sharesoutstanding"]
-    monthly_stock_prices_raw[numeric_cols] = monthly_stock_prices_raw[numeric_cols].apply(
-        pd.to_numeric, errors="coerce"
-    )
+
+    monthly_stock_prices_formatted = _format_data_monthly_stock_prices(monthly_stock_prices_raw, config)
 
     # Remove firms with missing shares outstanding
-    monthly_stock_prices_cleaned = _remove_firms_missing_sharesoutstanding(
-        monthly_stock_prices_raw, config
+    monthly_stock_prices_cleaned1 = _remove_firms_missing_sharesoutstanding(
+        monthly_stock_prices_formatted, config
     )
 
-    monthly_stock_prices_cleaned = _remove_non_significant_exchanges(monthly_stock_prices_cleaned, config)
+    # remove the firms from non-significant exchanges
+    monthly_stock_prices_cleaned2 = _remove_non_significant_exchanges(monthly_stock_prices_cleaned1, config)
+
+    # remove the firms whose close price is too small
+    monthly_stock_prices_cleaned3 = _remove_small_firms(monthly_stock_prices_cleaned2, config)
+
+    monthly_stock_prices_clipped_returns_cleaned: pd.DataFrame = _clip_monthly_return(monthly_stock_prices_cleaned3, config=config)
 
 
     if config.LOG_INFO:
-        config.logger.info(f"Cleaned the stock prices. {monthly_stock_prices_raw['gvkey'].nunique()} -> {monthly_stock_prices_cleaned['gvkey'].nunique()} firms")
-        config.logger.debug(f"Cleaned stock prices sample:\n{monthly_stock_prices_cleaned.head(5)}")
+        config.logger.info(f"Cleaned the stock prices. {monthly_stock_prices_raw['gvkey'].nunique()} -> {monthly_stock_prices_clipped_returns_cleaned['gvkey'].nunique()} firms")
+        config.logger.debug(f"Cleaned stock prices sample:\n{monthly_stock_prices_clipped_returns_cleaned.head(5)}")
 
-    return monthly_stock_prices_cleaned
+    return monthly_stock_prices_clipped_returns_cleaned
 
 
 def _fill_missing_values(
-    stock_price: pd.DataFrame, config: CONFIGURATION
+    stock_price: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to fill the missing dates (weekends are always missing) with the friday's data
@@ -450,7 +545,7 @@ def _fill_missing_values(
     ----------
     stock_price : pd.DataFrame
         Dataframe containing the prices and other info that will be filled
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -481,7 +576,7 @@ def _fill_missing_values(
 def intersect_stockprices_monthlyfactors(
     monthly_stock_prices_cleaned: pd.DataFrame,
     monthly_factors_processed: pd.DataFrame,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Function to intersect the dates of the stockprices and monthlyfactors and only keep those dates
@@ -493,7 +588,7 @@ def intersect_stockprices_monthlyfactors(
         Cleaned stock prices
     monthly_factors_processed : pd.DataFrame
         Processed monthly factors
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -527,7 +622,7 @@ def intersect_stockprices_monthlyfactors(
 # Firm Info Cleaning #
 ######################
 
-def clean_firm_info(firm_info_raw: pd.DataFrame, config: CONFIGURATION) -> pd.DataFrame:
+def clean_firm_info(firm_info_raw: pd.DataFrame, config: CONFIGURATION_CLASS) -> pd.DataFrame:
     """
     Function to clean the firm info
 
@@ -535,7 +630,7 @@ def clean_firm_info(firm_info_raw: pd.DataFrame, config: CONFIGURATION) -> pd.Da
     ----------
     firm_info_raw : pd.DataFrame
         Raw firm info
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -554,7 +649,7 @@ def clean_firm_info(firm_info_raw: pd.DataFrame, config: CONFIGURATION) -> pd.Da
 ############################
 
 def clean_sic_desc_raw(
-    sic_desc_raw: pd.DataFrame, config: CONFIGURATION
+    sic_desc_raw: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to clean the sic codes
@@ -563,7 +658,7 @@ def clean_sic_desc_raw(
     ----------
     sic_desc_raw : pd.DataFrame
         Raw SIC description
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -590,13 +685,13 @@ def clean_sic_desc_raw(
 # Main functions #
 ##################
 
-def clean_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
+def clean_data(config: CONFIGURATION_CLASS) -> DATAFRAME_CONTAINER:
     """
     Function to clean all of the data.
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         COnfiguration of the project
 
     Returns
@@ -660,13 +755,13 @@ def clean_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     )
 
 
-def clean_save_data(config: CONFIGURATION) -> None:
+def clean_save_data(config: CONFIGURATION_CLASS) -> None:
     """
     Function to clean and save the entire data.
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -682,4 +777,4 @@ def clean_save_data(config: CONFIGURATION) -> None:
 
 
 if __name__ == "__main__":
-    clean_save_data(CONFIG)
+    clean_save_data(PROJ_CONFIG)

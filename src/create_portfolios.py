@@ -4,21 +4,21 @@ import numpy as np
 import pandas as pd
 import warnings
 
-from configs import CONFIG, CONFIGURATION, FILENAMES_CLASS, DATAFRAME_CONTAINER
+from configs import PROJ_CONFIG, CONFIGURATION_CLASS, FILENAMES_CLASS, DATAFRAME_CONTAINER
 
 ####################
 # Download/Exports #
 ####################
 
 def download_processed_data(
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> DATAFRAME_CONTAINER:
     """
     Function to read the stock prices, firm info, and SIC code descriptions from the processed data directory.
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the model
 
     Returns
@@ -68,7 +68,7 @@ def download_processed_data(
 
 def save_portfolio_returns_constitution(
     portfolios: pd.DataFrame,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> None:
     """
     Function to save the portfolio returns and constitution details to CSV files.
@@ -77,7 +77,7 @@ def save_portfolio_returns_constitution(
     ----------
     portfolios : pd.DataFrame
         DataFrame containing the returns and info of the portfolios.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -221,7 +221,7 @@ def _compute_market_cap(
 
 
 def get_market_cap(
-    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION
+    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to add the market cap and present value market cap of firms to the dataframe.
@@ -232,7 +232,7 @@ def get_market_cap(
         DataFrame containing stock prices with a datetime index.
     inflation : pd.DataFrame
         DataFrame containing the inflation discount multiples with a datetime index.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -249,6 +249,7 @@ def get_market_cap(
     stock_prices["market_cap"] = _compute_market_cap(
         stock_prices, "close", "sharesoutstanding"
     )
+    stock_prices["Lagged_MarketCap"] = stock_prices.groupby("gvkey")["market_cap"].shift(1)
 
     if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
         stock_prices["market_cap_present_value"] = _present_value_inflation(
@@ -259,7 +260,7 @@ def get_market_cap(
 
 # MarketCap cutoff
 def _apply_marketcap_cutoff_latestperiod(
-    stock_prices: pd.DataFrame, config: CONFIGURATION
+    stock_prices: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to apply a market cap cutoff to the latest stock prices.
@@ -267,7 +268,7 @@ def _apply_marketcap_cutoff_latestperiod(
     ----------
     stock_prices : pd.DataFrame
         DataFrame containing stock prices with a datetime index.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -286,7 +287,7 @@ def _apply_marketcap_cutoff_latestperiod(
         stock_prices.loc[latest_date].reset_index().drop_duplicates(subset=["gvkey"])
     )
 
-    surviving_gvkeys = latest_prices.loc[latest_prices["market_cap"] >= marketcap_cutoff, "gvkey"].unique()
+    surviving_gvkeys = latest_prices.loc[latest_prices["Lagged_MarketCap"] >= marketcap_cutoff, "gvkey"].unique()
 
     result = stock_prices[stock_prices["gvkey"].isin(surviving_gvkeys)].copy()
 
@@ -302,7 +303,7 @@ def _apply_marketcap_cutoff_latestperiod(
 
 
 def _apply_marketcap_cutoff_allperiods(
-    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION
+    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to apply a market cap cutoff to the stock prices of all periods, discounting the market cap by inflation.
@@ -313,7 +314,7 @@ def _apply_marketcap_cutoff_allperiods(
         DataFrame containing stock prices with a datetime index.
     inflation : pd.DataFrame
         DataFrame containing inflation discount multiples with a datetime index.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -334,7 +335,7 @@ def _apply_marketcap_cutoff_allperiods(
     # Ensure alignment
     min_marketcap_discounted = min_marketcap_discounted.reindex(stock_prices.index).ffill()
 
-    mask = stock_prices["market_cap"] >= min_marketcap_discounted
+    mask = stock_prices["Lagged_MarketCap"] >= min_marketcap_discounted
 
     filtered_stock_prices: pd.DataFrame = stock_prices[mask]
 
@@ -343,14 +344,14 @@ def _apply_marketcap_cutoff_allperiods(
     if config.LOG_INFO:
         config.logger.info(
             f"Applied market cap cutoff of {min_marketcap} to all periods using inflation discounted values.\
-            \nNumber of entries dropped: {num_entries_before - num_entries_end})"
+            \nNumber of entries dropped: {num_entries_before - num_entries_end}"
         )
 
     return filtered_stock_prices
 
 
 def apply_marketcap_cutoff(
-    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION
+    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to apply the market cap cutoff.
@@ -362,7 +363,7 @@ def apply_marketcap_cutoff(
         DataFrame containing stock prices with a datetime index.
     inflation : pd.DataFrame
         DataFrame containing inflation discount multiples with a datetime index.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -462,7 +463,7 @@ def _format_firms_sic(
 
 
 def _assign_industry_to_firms_siclevel(
-    entries: pd.DataFrame, sic_descr: pd.DataFrame, config: CONFIGURATION
+    entries: pd.DataFrame, sic_descr: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to assign the firms to a specific industry by sic code level.
@@ -475,7 +476,7 @@ def _assign_industry_to_firms_siclevel(
         Dataframe containing firm information per period including sic codes.
     sic_descr : pd.DataFrame
         Dataframe containing sic code descriptions.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -510,7 +511,7 @@ def _assign_industry_to_firms_siclevel(
 
 
 def _assign_industry_firms_ffindustries(
-    entries: pd.DataFrame, ff_industries: pd.DataFrame, config: CONFIGURATION
+    entries: pd.DataFrame, ff_industries: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to assign to each firm its industry based on the Fama-French industry classification.
@@ -521,7 +522,7 @@ def _assign_industry_firms_ffindustries(
         DataFrame containing market entries of the firms including their SIC codes.
     ff_industries : pd.DataFrame
         DataFrame containing Fama-French industry classifications for each SIC-code.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -550,7 +551,7 @@ def assign_industry(
     entries: pd.DataFrame,
     sic_descr: pd.DataFrame,
     ff_industry_portfolios: pd.DataFrame,
-    config:CONFIGURATION,
+    config:CONFIGURATION_CLASS,
 ) -> pd.DataFrame:
     """
     Function to assign an industry to each firm based on the configuration.
@@ -564,7 +565,7 @@ def assign_industry(
         DataFrame containing SIC code descriptions.
     ff_industry_portfolios : pd.DataFrame
         DataFrame containing Fama-French industry classifications for each SIC-code.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -589,7 +590,7 @@ def portfolio_information(
     portfolio_subset: pd.DataFrame,
     industry_name: str,
     MarketCapID: str,
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
 )->pd.Series:
     """
     Function to add additional information to the portfolio, such as the number of firms and total market cap.
@@ -602,7 +603,7 @@ def portfolio_information(
         The name of the industry for which the portfolio is being created.
     MaerketCapID: str
         The market cap based sub-portfolio identifier (e.g. "all", "large_cap", "small_cap").
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -627,7 +628,7 @@ def portfolio_information(
 def marketcap_subportfolio_information(
     industry_subset: pd.DataFrame,
     industry_name: str,
-    config: CONFIGURATION
+    config: CONFIGURATION_CLASS
 )->List[pd.Series]:
     """
     Function to create the market cap based sub-portfolio information for a given industry portfolio subset.
@@ -638,7 +639,7 @@ def marketcap_subportfolio_information(
         DataFrame containing the subset of the portfolio for a specific industry and date.
     industry_name: str
         The name of the industry for which the portfolio is being created.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
     
     Returns
@@ -674,7 +675,7 @@ def marketcap_subportfolio_information(
 
 
 def calculate_portfolio_return(
-    portfolio_subset: pd.DataFrame, config: CONFIGURATION
+    portfolio_subset: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> float:
     """
     Function to calculate the return of a portfolio subset based on the returns of the individual stocks and their weights.
@@ -683,7 +684,7 @@ def calculate_portfolio_return(
     ----------
     portfolio_subset : pd.DataFrame
         DataFrame containing the subset of the portfolio for a specific industry and date, including stock returns and market caps.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -704,7 +705,7 @@ def calculate_portfolio_return(
 
 def create_all_portfolios(
     market_industry_info: pd.DataFrame,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 )->Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Function to create the industry portfolios based on the market entries and their assigned industries.
@@ -715,7 +716,7 @@ def create_all_portfolios(
     ----------
     market_industry_info : pd.DataFrame
         DataFrame containing the market entries of the firms and their assigned industries.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
     
     Returns
@@ -736,7 +737,6 @@ def create_all_portfolios(
     market_industry_info = market_industry_info.sort_values(["gvkey", "date"])
 
     # Get the lagged market cap to calculate the weight if necessary
-    market_industry_info["Lagged_MarketCap"] = market_industry_info.groupby("gvkey")["market_cap"].shift(1)
     market_industry_info = market_industry_info.dropna(subset=["Lagged_MarketCap"])
 
     dates: pd.DatetimeIndex = market_industry_info.index.unique(level=0).sort_values()
@@ -765,7 +765,7 @@ def create_all_portfolios(
 
 
 def drop_small_portfolios(
-    portfolio_df: pd.DataFrame, config: CONFIGURATION
+    portfolio_df: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to drop the portfolios with less firms than the minimum required.
@@ -774,7 +774,7 @@ def drop_small_portfolios(
     ----------
     portfolio_df : pd.DataFrame
         DataFrame containing the portfolio information.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -804,7 +804,7 @@ def drop_small_portfolios(
 
 
 def drop_sparse_portfolios(
-    portfolio_df: pd.DataFrame, config: CONFIGURATION
+    portfolio_df: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
     """
     Function to drop portfolios that do not appear often enough in the data, 
@@ -814,7 +814,7 @@ def drop_sparse_portfolios(
     ----------
     portfolio_df : pd.DataFrame
         DataFrame containing the portfolio information.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
         
     Returns
@@ -895,7 +895,7 @@ def _calculate_weight_in_portfolio_equal(firm_subset: pd.DataFrame) -> pd.Series
 
 
 def _calculate_weight_in_portfolio(
-    firm_subset: pd.DataFrame, config=CONFIGURATION
+    firm_subset: pd.DataFrame, config=CONFIGURATION_CLASS
 ) -> pd.Series:
     """
     Function to calculate the weight of different firms in a portfolio according to the configuration.
@@ -904,7 +904,7 @@ def _calculate_weight_in_portfolio(
     ----------
     firm_subset : pd.DataFrame
         DataFrame containing the information of the firms in the portfolio.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -928,7 +928,7 @@ def create_portfolios(
     sic_descr: pd.DataFrame,
     ff_industry_portfolios: pd.DataFrame,
     entries: pd.DataFrame,
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> pd.DataFrame:
     """
     Function to orchestrate the creation and formatting of industry and marketcap portfolios.
@@ -941,7 +941,7 @@ def create_portfolios(
         DataFrame containing Fama-French industry classifications for each SIC-code.
     entries: pd.DataFrame
         DataFrame containing the market entries of the firms to include in the index.
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -977,7 +977,7 @@ def create_portfolios(
 
 # Main pipeline function
 def create_portfolios_and_returns(
-    config: CONFIGURATION,
+    config: CONFIGURATION_CLASS,
 ) -> pd.DataFrame:
     """
     Main function to orchestrate the creation of portfolios based on SIC codes and market capitalization.
@@ -985,7 +985,7 @@ def create_portfolios_and_returns(
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project
 
     Returns
@@ -1025,6 +1025,9 @@ def create_portfolios_and_returns(
         config=config,
     )
 
+    print(stock_entries_to_keep.describe())
+    print(stock_entries_to_keep.nlargest(5,"return")[["market_cap", "close","companyname", "return", "Lagged_MarketCap"]])
+
     # Create the portfolios
     portfolios: pd.DataFrame = create_portfolios(
         sic_descr=data.sic_info,
@@ -1039,13 +1042,13 @@ def create_portfolios_and_returns(
     return portfolios
 
 
-def create_save_portfolios(config: CONFIGURATION) -> None:
+def create_save_portfolios(config: CONFIGURATION_CLASS) -> None:
     """
     Function to run the entire portfolio creation and return calculation pipeline.
 
     Parameters
     ----------
-    config : CONFIGURATION
+    config : CONFIGURATION_CLASS
         Configuration of the project.
 
     Returns
@@ -1064,4 +1067,4 @@ def create_save_portfolios(config: CONFIGURATION) -> None:
 
 
 if __name__ == "__main__":
-    create_save_portfolios(CONFIG)
+    create_save_portfolios(PROJ_CONFIG)

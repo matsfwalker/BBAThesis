@@ -13,10 +13,10 @@ from .constants import (
     BREAK_DATE_PERIODS
 )
 from .paths import PATHCONFIG
-from .schema import CONFIGURATION, PLOTTING_CONFIGURATIONS
+from .schema import CONFIGURATION_CLASS, PLOTTING_CONFIGURATIONS_CLASS
 from .logging_configs import setup_logging
 
-CONFIG = CONFIGURATION(
+PROJ_CONFIG = CONFIGURATION_CLASS(
     #########
     # Paths #
     #########
@@ -47,7 +47,9 @@ CONFIG = CONFIGURATION(
     EXCHANGES_TO_REMOVE=["Toronto Stock Exchange", "TSX Venture Exchange",              # Canadian Exchanges
                         "Other-OTC", "OTC Bulletin Board",                              # OTC-traded equities
                         "Non-traded Company or Security", "Unlisted Evaluated Equity"   # Non-regulated exchanges
-],
+    ],
+    MIN_STOCK_PRICE=1.0,        # Eliminate Penny-stocks
+    MAX_MONTHLY_RETURN=10.0,    # Clip at 1000% return per month
     #######################################
     # Industry Portfolio creation configs #
     #######################################
@@ -58,7 +60,7 @@ CONFIG = CONFIGURATION(
     # Other portfolio creation configs #
     ##############################
     CUTOFF_FIRMS_PER_PORTFOLIO=10,  # Number of firms needed per portfolio
-    MIN_MARKETCAP_FIRM=100_000.0,  # Minimum latest market cap needed for a firm to be considered
+    MIN_MARKETCAP_FIRM=10_000_000.0,  # Minimum market cap needed for a firm to be considered
     MIN_OCCURANCES_PORTFOLIOS=26,  # Minimum number of occurances of a portfolio in the data to be included in the analysis
     DISCOUNT_MARKETCAP_FIRM_INFLATION=True,  # Discount the marketcap of firms. If this is used, then the minimum market cap is in real terms, not nominal and applied to each period.
     PORTFOLIO_AGGREGATION_METHOD="MarketCap",  # Method to aggregate firms into portfolios
@@ -81,7 +83,7 @@ CONFIG = CONFIGURATION(
 )
 
 
-PLOTTING_CONFIG = PLOTTING_CONFIGURATIONS(
+PLOTTING_CONFIG = PLOTTING_CONFIGURATIONS_CLASS(
     TIMESPANS_TO_PLOT=[
         {
             "name": "Pandemic",

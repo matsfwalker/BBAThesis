@@ -20,6 +20,8 @@ FROM (
         AND prccm IS NOT NULL
         AND cshom IS NOT NULL
         AND cshom > 0
+        AND secstat = 'A'           -- The stock is actively trading ('I' = Inactive)
+        AND iid = '01'
 ) AS a
 JOIN comp.r_ex_codes AS b
     ON a.exchg = b.exchgcd;         -- Get the name of the main exchange of the stock
