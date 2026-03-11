@@ -9,6 +9,70 @@ import wrds  # Wharton Research Data Services
 
 from configs import CONFIG, CONFIGURATION, FILENAMES, DATAFRAME_CONTAINER
 
+####################
+# Helper Functions #
+####################
+
+def connect_wrds(config: CONFIGURATION) -> wrds.Connection:
+    """
+    Function to connect to the WRDS database using the credentials specified in the configuration.
+
+    Parameters
+    ----------
+    config : CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    wrds.Connection
+        Connection object to the WRDS database
+    """
+    # Connect to wrds Databank
+    wrds_credentials: Dict[str, str] = config.get_wrds_data()
+
+    db = wrds.Connection(wrds_username=wrds_credentials["username"], autoconnect=True)
+    pd.set_option("future.no_silent_downcasting", True)
+
+    if config.LOG_INFO:
+        config.logger.info("Successfully connected to WRDS database")
+
+    return db
+
+
+def chunkify_dates(start_date: dt.datetime, end_date: dt.datetime)->Iterator[Tuple[dt.datetime, dt.datetime]]:
+    """
+    Function to create an iterator of the dates between start_date and end_date in chunks of 1 year.
+    This reduces the time to run one query.
+    
+    Parameters
+    ----------
+    start_date : dt.datetime
+        Start date of the period to chunkify
+    end_date : dt.datetime
+        End date of the period to chunkify
+    
+    Returns
+    -------
+    Iterator[Tuple[dt.datetime, dt.datetime]]
+        Iterator of tuples containing the start and end date of each chunk
+    """
+    current = start_date
+
+    while current <= end_date:
+        next_year = dt.datetime(current.year + 1, 1, 1)
+        chunk_end = min(next_year - dt.timedelta(days=1), end_date)
+
+        yield (
+            current.strftime("%Y-%m-%d"),
+            chunk_end.strftime("%Y-%m-%d"),
+        )
+
+        current = chunk_end + dt.timedelta(days=1)
+
+
+###########
+# Factors #
+###########
 
 # Sub-download functions
 def download_fama_french_factors(
@@ -59,229 +123,9 @@ def download_fama_french_factors(
     return monthly_factors, yearly_factors
 
 
-def chunkify_dates(start_date: dt.datetime, end_date: dt.datetime)->Iterator[Tuple[dt.datetime, dt.datetime]]:
-    """
-    Function to create an iterator of the dates between start_date and end_date in chunks of 1 year.
-    This reduces the time to run one query.
-    
-    Parameters
-    ----------
-    start_date : dt.datetime
-        Start date of the period to chunkify
-    end_date : dt.datetime
-        End date of the period to chunkify
-    
-    Returns
-    -------
-    Iterator[Tuple[dt.datetime, dt.datetime]]
-        Iterator of tuples containing the start and end date of each chunk
-    """
-    current = start_date
-
-    while current <= end_date:
-        next_year = dt.datetime(current.year + 1, 1, 1)
-        chunk_end = min(next_year - dt.timedelta(days=1), end_date)
-
-        yield (
-            current.strftime("%Y-%m-%d"),
-            chunk_end.strftime("%Y-%m-%d"),
-        )
-
-        current = chunk_end + dt.timedelta(days=1)
-
-
-def download_monthly_market_info(
-    con: wrds.Connection, config: CONFIGURATION
-) -> pd.DataFrame:
-    """
-    Function to query the monthly info, including prices, returns, etc. for the observable universe of stocks from WRDS.
-
-    Parameters
-    ----------
-    con : wrds.Connection
-        Connection object to the WRDS database.
-    config : CONFIGURATION
-        Configuration of the project
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing the daily prices for the observable universe of stocks.
-    """
-
-    # Unpack the config
-    start_date: dt.datetime = config.START_DATE_ANALYSIS - dt.timedelta(days=31)
-    end_date: dt.datetime = config.END_DATE_ANALYSIS - dt.timedelta(days=31)
-
-    # Get the SQL query
-    sql_query_monthly_price: str = config.paths.sql_query(
-        "monthly_market_prices"
-    ).read_text()
-
-    frames: List[pd.DataFrame] = []
-
-    for price_query_params in chunkify_dates(start_date, end_date):
-        result_subquery: pd.DataFrame = con.raw_sql(
-            sql_query_monthly_price, params=price_query_params, date_cols=["date"]
-        )
-        frames.append(result_subquery)
-
-        if config.LOG_INFO:
-            config.logger.info(
-                f"Downloaded monthly prices for the observable universe of stocks from WRDS from {price_query_params[0]} to {price_query_params[1]}"
-            )
-
-    result = pd.concat(frames, ignore_index=True)
-
-    if config.LOG_INFO:
-        config.logger.info(
-            f"Successfully downloaded daily prices for the observable universe of stocks ({len(result['gvkey'].unique())} firms) from WRDS from {start_date} to {end_date}"
-        )
-        config.logger.debug(f"Daily prices sample:\n{result.sample(5)}")
-
-    return result
-
-
-def download_firm_info_wrds(
-    con: wrds.Connection, config: CONFIGURATION
-) -> pd.DataFrame:
-    """
-    Function to query information for the firms in the observable universe of stocks from WRDS.
-    The function reads the SQL query from the external file SQL_QUERY_FIRM_INFO.
-
-    Parameters
-    ----------
-    con : wrds.Connection
-        Connection object to the WRDS database.
-    config : CONFIGURATION
-        configuration of the project
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing the information for the firms in the observable universe of stocks.
-    """
-    sql_query_firm_info: str = config.paths.sql_query("firm_info").read_text()
-
-    result: pd.DataFrame = con.raw_sql(sql_query_firm_info)
-
-    if config.LOG_INFO:
-        config.logger.info(
-            f"Successfully downloaded firm information for the observable universe ({len(result["gvkey"].unique())} firms) of stocks from WRDS"
-        )
-        config.logger.debug(f"Firm info sample:\n{result.sample(5)}"
-        )
-
-    print(result.head())
-
-    return result
-
-
-def download_sic_description_wrds(
-    con: wrds.Connection, config: CONFIGURATION
-) -> pd.DataFrame:
-    """
-    Function to retrieve information about different sic codes from WRDS.
-    SIC codes are used to classify firms by industry.
-    These can be grouped by their first 1, 2, 3 or 4 digits depending on precision.
-    The function reads the SQL query from the external file SQL_QUERY_SIC_CODES.
-
-    Parameters
-    ----------
-    con : wrds.Connection
-        Connection object to the WRDS database.
-    config : CONFIGURATION
-        Configuration of the project
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing the sic code descriptions.
-    """
-    sql_query_sic_codes: str = config.paths.sql_query("sic_codes").read_text()
-
-    result: pd.DataFrame = con.raw_sql(sql_query_sic_codes)
-
-    if config.LOG_INFO:
-        config.logger.info(
-            f"Successfully downloaded firm information for the observable universe of stocks ({len(result["siccode"].unique())} firms) from WRDS"
-        )
-        config.logger.debug(f"SIC codes sample:\n{result.sample(5)}"
-        )
-
-    return result
-
-
-def download_monthly_inflation(config: CONFIGURATION) -> pd.Series:
-    """
-    Function to download monthly inflation data for the entire period to discount values using the time value of money.
-    This is the MoM inflation, not inflation compared to previous year.
-
-    Parameters
-    ----------
-    config : CONFIGURATION
-        Configuration of the project
-
-    Returns
-    -------
-    pd.Series
-        Series containing MoM inflation
-
-    """
-    # Unpack the config
-    start_date: dt.datetime = config.START_DATE_ANALYSIS - dt.timedelta(days=31)
-    end_date: dt.datetime = config.END_DATE_ANALYSIS
-
-    inflation_lib: str = config.INFLATION_LIB
-    inflation_source: str = config.INFLATION_SOURCE
-
-    cpi: Any = web.DataReader(
-        name=inflation_source, data_source=inflation_lib, start=start_date, end=end_date
-    )
-
-    if not isinstance(cpi, pd.DataFrame):
-        raise ValueError(
-            f"cpi object downloaded from {inflation_lib} is of type {type(cpi)} and not pd.DataFrame"
-        )
-
-    monthly_inflation: pd.Series = cpi["CPIAUCSL"].pct_change(1, fill_method=None)
-
-    monthly_inflation.name = "MoM inflation"
-    monthly_inflation.index.name = "date"
-
-    if config.LOG_INFO:
-        config.logger.info(
-            f"Successfully downloaded inflation info from {inflation_lib} from {inflation_source} from {start_date} to {end_date}"
-        )
-        config.logger.debug(f"Monthly inflation sample:\n{monthly_inflation.sample(5)}"
-        )
-
-    return monthly_inflation
-
-
-def connect_wrds(config: CONFIGURATION) -> wrds.Connection:
-    """
-    Function to connect to the WRDS database using the credentials specified in the configuration.
-
-    Parameters
-    ----------
-    config : CONFIGURATION
-        Configuration of the project
-
-    Returns
-    -------
-    wrds.Connection
-        Connection object to the WRDS database
-    """
-    # Connect to wrds Databank
-    wrds_credentials: Dict[str, str] = config.get_wrds_data()
-
-    db = wrds.Connection(wrds_username=wrds_credentials["username"], autoconnect=True)
-    pd.set_option("future.no_silent_downcasting", True)
-
-    if config.LOG_INFO:
-        config.logger.info("Successfully connected to WRDS database")
-
-    return db
-
+##########################
+# FF Industry Portfolios #
+##########################
 
 def import_ff_portfolios(config: CONFIGURATION) -> pd.DataFrame:
     """
@@ -356,7 +200,183 @@ def import_ff_portfolios(config: CONFIGURATION) -> pd.DataFrame:
     return result
 
 
-# Main functions
+#############
+# Inflation #
+#############
+
+def download_monthly_inflation(config: CONFIGURATION) -> pd.Series:
+    """
+    Function to download monthly inflation data for the entire period to discount values using the time value of money.
+    This is the MoM inflation, not inflation compared to previous year.
+
+    Parameters
+    ----------
+    config : CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    pd.Series
+        Series containing MoM inflation
+
+    """
+    # Unpack the config
+    start_date: dt.datetime = config.START_DATE_ANALYSIS - dt.timedelta(days=31)
+    end_date: dt.datetime = config.END_DATE_ANALYSIS
+
+    inflation_lib: str = config.INFLATION_LIB
+    inflation_source: str = config.INFLATION_SOURCE
+
+    cpi: Any = web.DataReader(
+        name=inflation_source, data_source=inflation_lib, start=start_date, end=end_date
+    )
+
+    if not isinstance(cpi, pd.DataFrame):
+        raise ValueError(
+            f"cpi object downloaded from {inflation_lib} is of type {type(cpi)} and not pd.DataFrame"
+        )
+
+    monthly_inflation: pd.Series = cpi["CPIAUCSL"].pct_change(1, fill_method=None)
+
+    monthly_inflation.name = "MoM inflation"
+    monthly_inflation.index.name = "date"
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Successfully downloaded inflation info from {inflation_lib} from {inflation_source} from {start_date} to {end_date}"
+        )
+        config.logger.debug(f"Monthly inflation sample:\n{monthly_inflation.sample(5)}"
+        )
+
+    return monthly_inflation
+
+
+##################
+# WRDS Downloads #
+##################
+
+def download_monthly_market_info_wrds(
+    con: wrds.Connection, config: CONFIGURATION
+) -> pd.DataFrame:
+    """
+    Function to query the monthly info, including prices, returns, etc. for the observable universe of stocks from WRDS.
+
+    Parameters
+    ----------
+    con : wrds.Connection
+        Connection object to the WRDS database.
+    config : CONFIGURATION
+        Configuration of the project
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the daily prices for the observable universe of stocks.
+    """
+
+    # Unpack the config
+    start_date: dt.datetime = config.START_DATE_ANALYSIS - dt.timedelta(days=31)
+    end_date: dt.datetime = config.END_DATE_ANALYSIS - dt.timedelta(days=31)
+
+    # Get the SQL query
+    sql_query_monthly_price: str = config.paths.sql_query(
+        "monthly_market_prices"
+    ).read_text()
+
+    frames: List[pd.DataFrame] = []
+
+    for price_query_params in chunkify_dates(start_date, end_date):
+        result_subquery: pd.DataFrame = con.raw_sql(
+            sql_query_monthly_price, params=price_query_params, date_cols=["date"]
+        )
+        frames.append(result_subquery)
+
+        if config.LOG_INFO:
+            config.logger.debug(
+                f"Downloaded monthly prices for the observable universe of stocks from WRDS from {price_query_params[0]} to {price_query_params[1]}"
+            )
+
+    result = pd.concat(frames, ignore_index=True)
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Successfully downloaded daily prices for the observable universe of stocks ({len(result['gvkey'].unique())} firms) from WRDS from {start_date} to {end_date}"
+        )
+        config.logger.debug(f"Daily prices sample:\n{result.sample(5)}")
+
+    return result
+
+
+def download_firm_info_wrds(
+    con: wrds.Connection, config: CONFIGURATION
+) -> pd.DataFrame:
+    """
+    Function to query information for the firms in the observable universe of stocks from WRDS.
+    The function reads the SQL query from the external file SQL_QUERY_FIRM_INFO.
+
+    Parameters
+    ----------
+    con : wrds.Connection
+        Connection object to the WRDS database.
+    config : CONFIGURATION
+        configuration of the project
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the information for the firms in the observable universe of stocks.
+    """
+    sql_query_firm_info: str = config.paths.sql_query("firm_info").read_text()
+
+    result: pd.DataFrame = con.raw_sql(sql_query_firm_info)
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Successfully downloaded firm information for the observable universe ({len(result["gvkey"].unique())} firms) of stocks from WRDS"
+        )
+        config.logger.debug(f"Firm info sample:\n{result.sample(5)}"
+        )
+
+    return result
+
+
+def download_sic_description_wrds(
+    con: wrds.Connection, config: CONFIGURATION
+) -> pd.DataFrame:
+    """
+    Function to retrieve information about different sic codes from WRDS.
+    SIC codes are used to classify firms by industry.
+    These can be grouped by their first 1, 2, 3 or 4 digits depending on precision.
+    The function reads the SQL query from the external file SQL_QUERY_SIC_CODES.
+
+    Parameters
+    ----------
+    con : wrds.Connection
+        Connection object to the WRDS database.
+    config : CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the sic code descriptions.
+    """
+    sql_query_sic_codes: str = config.paths.sql_query("sic_codes").read_text()
+
+    result: pd.DataFrame = con.raw_sql(sql_query_sic_codes)
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Successfully downloaded firm information for the observable universe of stocks ({len(result["siccode"].unique())} firms) from WRDS"
+        )
+        config.logger.debug(f"SIC codes sample:\n{result.sample(5)}"
+        )
+
+    return result
+
+
+################## 
+# Main functions #
+##################
+
 def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     """Donwloads the entire data necessary for the project.
     Parameters
@@ -378,7 +398,7 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     db: wrds.Connection = connect_wrds(config)
 
     # Download the prices data
-    prices_obs_universe = download_monthly_market_info(db, config)
+    prices_obs_universe = download_monthly_market_info_wrds(db, config)
 
     # Download the firm info
     firm_info: pd.DataFrame = download_firm_info_wrds(db, config)
