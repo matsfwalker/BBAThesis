@@ -1,7 +1,7 @@
 from enum import StrEnum
 from pathlib import Path
 
-from .schema import PATH_ANALYSIS, PATH_CONFIG, PROJECT_ROOT
+from .schema import PATH_ANALYSIS_CLASS, PATH_CONFIG_CLASS, PROJECT_ROOT
 
 # Paths that are hidden from the PATHCONFIG
 DATA_DIR: Path = PROJECT_ROOT / "data"
@@ -10,7 +10,7 @@ RESULTS_DIR: Path = PROJECT_ROOT / "results"
 LOGGING_DIR: Path = PROJECT_ROOT / "logs"
 
 # Paths for the analysis
-ANALYSIS_PATHS = PATH_ANALYSIS(
+ANALYSIS_PATHS = PATH_ANALYSIS_CLASS(
     PORTFOLIO_DATA_DIR=DATA_DIR / "portfolios",
     # Result directories in the RESULTS_DIR
     RESULT_DATA_DIR=RESULTS_DIR / "data",
@@ -20,7 +20,7 @@ ANALYSIS_PATHS = PATH_ANALYSIS(
 )
 
 # Paths for the main
-PATHCONFIG = PATH_CONFIG(
+PATHCONFIG = PATH_CONFIG_CLASS(
     # SQL directory
     SQL_DIR=PROJECT_ROOT / "sql",
     # Data directories in the DATA_DIR
@@ -35,7 +35,7 @@ PATHCONFIG = PATH_CONFIG(
 
 
 # Enum for the analysis pathnames
-class FILENAMES_ANALYSIS(StrEnum):
+class FILENAMES_ANALYSIS_CLASS(StrEnum):
     # Portfolio Info
     Portfolio_info = "portfolio_returns_monthly"
     Portfolio_construction_details = "portfolio_construction_details"
@@ -47,7 +47,7 @@ class FILENAMES_ANALYSIS(StrEnum):
 
 
 # Enum for all pathnames
-class FILENAMES(StrEnum):
+class FILENAMES_CLASS(StrEnum):
     # Fama French Files
     FF5_factors_monthly = "fama_french_monthly_factors"
     FF5_factors_yearly = "fama_french_yearly_factors"

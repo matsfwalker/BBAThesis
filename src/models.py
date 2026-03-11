@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 import pandas as pd
 import statsmodels.api as sm
 
-from configs import CONFIG, CONFIGURATION, FILENAMES
+from configs import CONFIG, CONFIGURATION, FILENAMES_CLASS
 
 
 def download_processed_data(
@@ -27,19 +27,19 @@ def download_processed_data(
         - portfolio_returns_monthly
     """
     ff_factors_monthly: pd.DataFrame = pd.read_csv(
-        config.paths.processed_read(FILENAMES.FF5_factors_monthly),
+        config.paths.processed_read(FILENAMES_CLASS.FF5_factors_monthly),
         parse_dates=["date"],
         index_col="date",
     )
 
     ff_factors_yearly: pd.DataFrame = pd.read_csv(
-        config.paths.processed_read(FILENAMES.FF5_factors_yearly),
+        config.paths.processed_read(FILENAMES_CLASS.FF5_factors_yearly),
         parse_dates=["date"],
         index_col="date",
     )
 
     portfolio_info_monthly: pd.DataFrame = pd.read_csv(
-        config.paths.portfolios_read(FILENAMES.Portfolio_info),
+        config.paths.portfolios_read(FILENAMES_CLASS.Portfolio_info),
         parse_dates=["date"],
         index_col=["date"],
     )
@@ -675,15 +675,15 @@ def save_model(
     None"""
 
     comparison_monthly_returns.to_csv(
-        config.paths.results_out(FILENAMES.Comp_pred_actual_portfolio)
+        config.paths.results_out(FILENAMES_CLASS.Comp_pred_actual_portfolio)
     )
 
     factor_loadings_monthly.to_csv(
-        config.paths.results_out(FILENAMES.Factor_loadings_monthly)
+        config.paths.results_out(FILENAMES_CLASS.Factor_loadings_monthly)
     )
 
     ff_factors_over_time.to_csv(
-        config.paths.results_out(FILENAMES.Factor_loadings_differentperiods)
+        config.paths.results_out(FILENAMES_CLASS.Factor_loadings_differentperiods)
     )
 
     if config.LOG_INFO:

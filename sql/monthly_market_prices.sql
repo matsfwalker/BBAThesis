@@ -2,9 +2,9 @@ SELECT
     a.gvkey,
     a.datadate AS date,
     a.prccm AS close,
-    a.trt1m AS return_factor,
+    a.trt1m AS return,
     a.cshom AS sharesoutstanding,
-    b.exchgcd AS exchange
+    b.exchgdesc AS exchange
 FROM (
     SELECT
         gvkey,

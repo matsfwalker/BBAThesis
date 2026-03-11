@@ -2,11 +2,111 @@ from typing import List, Literal, Tuple
 
 import numpy as np
 import pandas as pd
+import warnings
 
-from configs import CONFIG, CONFIGURATION, FILENAMES, DATAFRAME_CONTAINER
+from configs import CONFIG, CONFIGURATION, FILENAMES_CLASS, DATAFRAME_CONTAINER
+
+####################
+# Download/Exports #
+####################
+
+def download_processed_data(
+    config: CONFIGURATION,
+) -> DATAFRAME_CONTAINER:
+    """
+    Function to read the stock prices, firm info, and SIC code descriptions from the processed data directory.
+
+    Parameters
+    ----------
+    config : CONFIGURATION
+        Configuration of the model
+
+    Returns
+    -------
+    DATAFRAME_CONTAINER
+        A container for the dataframes.
+    """
+
+    if config.LOG_INFO:
+        config.logger.info("Starting to download processed data...\n" + "-" * 80)
+
+    stock_prices: pd.DataFrame = pd.read_csv(
+        config.paths.processed_read(FILENAMES_CLASS.Stock_prices),
+        parse_dates=["date"],
+        index_col="date",
+    )
+
+    firm_info: pd.DataFrame = pd.read_csv(
+        config.paths.processed_read(FILENAMES_CLASS.Firm_info)
+    )
+
+    sic_codes: pd.DataFrame = pd.read_csv(
+        config.paths.processed_read(FILENAMES_CLASS.Sic_description)
+    )
+
+    inflation: pd.DataFrame = pd.read_csv(
+        config.paths.processed_read(FILENAMES_CLASS.Inflation_info_monthly),
+        parse_dates=["date"],
+        index_col="date",
+    )
+
+    ff_industry_portfolios: pd.DataFrame = pd.read_csv(
+        config.paths.processed_read(FILENAMES_CLASS.FF5_industry_portfolios)
+    )
+
+    if config.LOG_INFO:
+        config.logger.info("Successfully downloaded the processed data")
+
+    return DATAFRAME_CONTAINER(
+        monthly_stock_info=stock_prices,
+        firm_info=firm_info,
+        sic_info=sic_codes,
+        monthly_inflation=inflation,
+        ff_industry_portfolios=ff_industry_portfolios,
+    )
 
 
-# utils function to discount values based on inflation
+def save_portfolio_returns_constitution(
+    portfolios: pd.DataFrame,
+    config: CONFIGURATION,
+) -> None:
+    """
+    Function to save the portfolio returns and constitution details to CSV files.
+
+    Parameters
+    ----------
+    portfolios : pd.DataFrame
+        DataFrame containing the returns and info of the portfolios.
+    config : CONFIGURATION
+        Configuration of the project.
+
+    Returns
+    -------
+    None
+        This function saves the dataframes to CSV files and does not return anything.
+    """
+
+    if config.LOG_INFO:
+        config.logger.info(
+            "Saving the portfolio returns and constitution details to CSV files...\n"
+            + "-" * 80
+        )
+
+    # Save the results
+    portfolios.to_csv(config.paths.portfolios_out(FILENAMES_CLASS.Portfolio_info))
+
+    if config.LOG_INFO:
+        config.logger.info(
+            "Successfully saved the portfolio returns and constitution details"
+        )
+
+    return
+
+
+#########
+# Utils #
+
+#########
 def _inflation_discount(inflation: pd.DataFrame, value: float) -> pd.Series:
     """
     Function to discount a given value based on the inflation discount multiples.
@@ -55,64 +155,48 @@ def _present_value_inflation(
     return values / matched_inflation.to_numpy()
 
 
-# Import the data
-def download_processed_data(
-    config: CONFIGURATION,
-) -> DATAFRAME_CONTAINER:
+# Get the returns from portfolios (No longer Used)
+def __get_returns_stocks(stock_prices: pd.DataFrame) -> pd.DataFrame:
     """
-    Function to read the stock prices, firm info, and SIC code descriptions from the processed data directory.
-
+    Function to compute the returns of individual stocks.
     Parameters
     ----------
-    config : CONFIGURATION
-        Configuration of the model
-
+    stock_prices : pd.DataFrame
+        DataFrame containing stock prices with a datetime index.
     Returns
     -------
-    DATAFRAME_CONTAINER
-        A container for the dataframes.
+    pd.DataFrame
+        A DataFrame containing the returns of individual stocks in addition to the existing info.
     """
 
-    if config.LOG_INFO:
-        config.logger.info("Starting to download processed data...\n" + "-" * 80)
-
-    stock_prices: pd.DataFrame = pd.read_csv(
-        config.paths.processed_read(FILENAMES.Stock_prices),
-        parse_dates=["date"],
-        index_col="date",
+    warnings.warn(
+        "__get_returns_stocks() is deprecated, as the returns are received directly from wrds",
+        DeprecationWarning,
+        stacklevel=2
     )
 
-    firm_info: pd.DataFrame = pd.read_csv(
-        config.paths.processed_read(FILENAMES.Firm_info)
+    # Reset the index of the dataframe
+    prices_noindex: pd.DataFrame = stock_prices.reset_index(names=["date"])
+
+    # Sort the prices, first by gvkey and then by date
+    sorted_prices: pd.DataFrame = prices_noindex.sort_values(
+        ["gvkey", "date"]
+    ).drop_duplicates(subset=["gvkey", "date"])
+
+    # Calculate their return
+    sorted_prices["return"] = sorted_prices.groupby("gvkey")["close"].pct_change(
+        fill_method=None
     )
 
-    sic_codes: pd.DataFrame = pd.read_csv(
-        config.paths.processed_read(FILENAMES.Sic_description)
-    )
+    # Reset the date as index and sort it
+    returns: pd.DataFrame = sorted_prices.set_index("date").dropna(subset=["return"]).sort_index()
 
-    inflation: pd.DataFrame = pd.read_csv(
-        config.paths.processed_read(FILENAMES.Inflation_info_monthly),
-        parse_dates=["date"],
-        index_col="date",
-    )
-
-    ff_industry_portfolios: pd.DataFrame = pd.read_csv(
-        config.paths.processed_read(FILENAMES.FF5_industry_portfolios)
-    )
-
-    if config.LOG_INFO:
-        config.logger.info("Successfully downloaded the processed data")
-
-    return DATAFRAME_CONTAINER(
-        monthly_stock_info=stock_prices,
-        firm_info=firm_info,
-        sic_info=sic_codes,
-        monthly_inflation=inflation,
-        ff_industry_portfolios=ff_industry_portfolios,
-    )
+    return returns
 
 
-# Compute MarketCap
+#############
+# MarketCap #
+#############
 def _compute_market_cap(
     df_info: pd.DataFrame, price_column: str, shares_column: str
 ) -> pd.Series:
@@ -172,7 +256,6 @@ def get_market_cap(
         )
 
     return stock_prices
-
 
 # MarketCap cutoff
 def _apply_marketcap_cutoff_latestperiod(
@@ -299,7 +382,10 @@ def apply_marketcap_cutoff(
         )
 
 
-# Create Industry Portfolios
+#######################
+# Industry Assignment #
+#######################
+
 def _format_sic_codes(
     sic_descr: pd.DataFrame, level: Literal[1, 2, 3, 4], sic_col: str = "siccode"
 ) -> pd.DataFrame:
@@ -495,6 +581,9 @@ def assign_industry(
         )
 
 
+######################
+# Portfolio Creation #
+######################
 
 def portfolio_information(
     portfolio_subset: pd.DataFrame,
@@ -753,36 +842,6 @@ def drop_sparse_portfolios(
 
     return result.set_index(["date", "industry_name"])
 
-# Get the returns from portfolios
-def get_returns_stocks(stock_prices: pd.DataFrame) -> pd.DataFrame:
-    """
-    Function to compute the returns of individual stocks.
-    Parameters
-    ----------
-    stock_prices : pd.DataFrame
-        DataFrame containing stock prices with a datetime index.
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame containing the returns of individual stocks in addition to the existing info.
-    """
-    # Reset the index of the dataframe
-    prices_noindex: pd.DataFrame = stock_prices.reset_index(names=["date"])
-
-    # Sort the prices, first by gvkey and then by date
-    sorted_prices: pd.DataFrame = prices_noindex.sort_values(
-        ["gvkey", "date"]
-    ).drop_duplicates(subset=["gvkey", "date"])
-
-    # Calculate their return
-    sorted_prices["return"] = sorted_prices.groupby("gvkey")["close"].pct_change(
-        fill_method=None
-    )
-
-    # Reset the date as index and sort it
-    returns: pd.DataFrame = sorted_prices.set_index("date").dropna(subset=["return"]).sort_index()
-
-    return returns
 
 
 def _calculate_weight_in_portfolio_marketcap(firm_subset: pd.DataFrame) -> pd.Series:
@@ -900,11 +959,8 @@ def create_portfolios(
         config=config,
     )
 
-    # Calculate the returns
-    prices_and_returns: pd.DataFrame = get_returns_stocks(industry_assignment_per_period)
 
-
-    portfolios: pd.DataFrame = create_all_portfolios(prices_and_returns, config)
+    portfolios: pd.DataFrame = create_all_portfolios(industry_assignment_per_period, config)
 
     # Drop non-significant portfolios
     industry_marketcap_portfolios_filtered: pd.DataFrame = drop_small_portfolios(
@@ -918,42 +974,6 @@ def create_portfolios(
 
 
 # Save the results
-def save_portfolio_returns_constitution(
-    portfolios: pd.DataFrame,
-    config: CONFIGURATION,
-) -> None:
-    """
-    Function to save the portfolio returns and constitution details to CSV files.
-
-    Parameters
-    ----------
-    portfolios : pd.DataFrame
-        DataFrame containing the returns and info of the portfolios.
-    config : CONFIGURATION
-        Configuration of the project.
-
-    Returns
-    -------
-    None
-        This function saves the dataframes to CSV files and does not return anything.
-    """
-
-    if config.LOG_INFO:
-        config.logger.info(
-            "Saving the portfolio returns and constitution details to CSV files...\n"
-            + "-" * 80
-        )
-
-    # Save the results
-    portfolios.to_csv(config.paths.portfolios_out(FILENAMES.Portfolio_info))
-
-    if config.LOG_INFO:
-        config.logger.info(
-            "Successfully saved the portfolio returns and constitution details"
-        )
-
-    return
-
 
 # Main pipeline function
 def create_portfolios_and_returns(

@@ -7,7 +7,7 @@ import pandas as pd
 import pandas_datareader.data as web
 import wrds  # Wharton Research Data Services
 
-from configs import CONFIG, CONFIGURATION, FILENAMES, DATAFRAME_CONTAINER
+from configs import CONFIG, CONFIGURATION, FILENAMES_CLASS, DATAFRAME_CONTAINER
 
 ####################
 # Helper Functions #
@@ -455,23 +455,23 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
     if ff5_monthly is None or ff5_yearly is None:
         raise ValueError("Fama-French factors data frames cannot be None")
 
-    ff5_monthly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_monthly))
-    ff5_yearly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_yearly))
+    ff5_monthly.to_csv(CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_factors_monthly))
+    ff5_yearly.to_csv(CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_factors_yearly))
 
     data.monthly_stock_info.to_csv(
-        CONFIG.paths.raw_out(FILENAMES.Stock_prices), index=False
+        CONFIG.paths.raw_out(FILENAMES_CLASS.Stock_prices), index=False
     )
 
-    data.firm_info.to_csv(CONFIG.paths.raw_out(FILENAMES.Firm_info), index=False)
+    data.firm_info.to_csv(CONFIG.paths.raw_out(FILENAMES_CLASS.Firm_info), index=False)
 
-    data.sic_info.to_csv(CONFIG.paths.raw_out(FILENAMES.Sic_description), index=False)
+    data.sic_info.to_csv(CONFIG.paths.raw_out(FILENAMES_CLASS.Sic_description), index=False)
 
     data.monthly_inflation.to_csv(
-        CONFIG.paths.raw_out(FILENAMES.Inflation_info_monthly), index=True
+        CONFIG.paths.raw_out(FILENAMES_CLASS.Inflation_info_monthly), index=True
     )
 
     data.ff_industry_portfolios.to_csv(
-        CONFIG.paths.raw_out(FILENAMES.FF5_industry_portfolios), index=False
+        CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_industry_portfolios), index=False
     )
 
     if config.LOG_INFO:

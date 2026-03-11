@@ -142,7 +142,7 @@ class BasePathConfig:
 
 # Paths for the analysis (only access to model and portfolio data and results)
 @dataclass(frozen=True, slots=True)
-class PATH_ANALYSIS(BasePathConfig):
+class PATH_ANALYSIS_CLASS(BasePathConfig):
     PORTFOLIO_DATA_DIR: Path
     # Result directories in the RESULTS_DIR
     RESULT_DATA_DIR: Path
@@ -183,7 +183,7 @@ class PATH_ANALYSIS(BasePathConfig):
 
 # Paths for the entire program (all access)
 @dataclass(frozen=True, slots=True)
-class PATH_CONFIG(BasePathConfig):
+class PATH_CONFIG_CLASS(BasePathConfig):
     # SQL directory
     SQL_DIR: Path
 
@@ -267,7 +267,7 @@ class CONFIGURATION:
     """Configuration dataclass to group all configurations."""
 
     # Paths
-    paths: PATH_CONFIG
+    paths: PATH_CONFIG_CLASS
 
     # Logging
     LOG_INFO: bool
