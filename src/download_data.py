@@ -90,12 +90,11 @@ def chunkify_dates(start_date: dt.datetime, end_date: dt.datetime)->Iterator[Tup
         current = chunk_end + dt.timedelta(days=1)
 
 
-def download_prices_daily_wrds(
+def download_monthly_market_info(
     con: wrds.Connection, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
-    Function to query the daily prices for the observable universe of stocks from WRDS.
-    The function reads the SQL query from the external file SQL_QUERY_MARKET_PRICE.
+    Function to query the monthly info, including prices, returns, etc. for the observable universe of stocks from WRDS.
 
     Parameters
     ----------
@@ -114,21 +113,21 @@ def download_prices_daily_wrds(
     end_date: dt.datetime = config.END_DATE_ANALYSIS - dt.timedelta(days=31)
 
     # Get the SQL query
-    sql_query_daily_price: str = config.paths.sql_query(
-        "daily_market_prices"
+    sql_query_monthly_price: str = config.paths.sql_query(
+        "monthly_market_prices"
     ).read_text()
 
     frames: List[pd.DataFrame] = []
 
     for price_query_params in chunkify_dates(start_date, end_date):
         result_subquery: pd.DataFrame = con.raw_sql(
-            sql_query_daily_price, params=price_query_params, date_cols=["date"]
+            sql_query_monthly_price, params=price_query_params, date_cols=["date"]
         )
         frames.append(result_subquery)
 
         if config.LOG_INFO:
             config.logger.info(
-                f"Downloaded daily prices for the observable universe of stocks from WRDS from {price_query_params[0]} to {price_query_params[1]}"
+                f"Downloaded monthly prices for the observable universe of stocks from WRDS from {price_query_params[0]} to {price_query_params[1]}"
             )
 
     result = pd.concat(frames, ignore_index=True)
@@ -379,7 +378,7 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     db: wrds.Connection = connect_wrds(config)
 
     # Download the prices data
-    prices_obs_universe = download_prices_daily_wrds(db, config)
+    prices_obs_universe = download_monthly_market_info(db, config)
 
     # Download the firm info
     firm_info: pd.DataFrame = download_firm_info_wrds(db, config)
@@ -404,7 +403,7 @@ def download_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     return DATAFRAME_CONTAINER(
         monthly_fama_french=ff5_monthly,
         yearly_fama_french=ff5_yearly,
-        stock_market_info=prices_obs_universe,
+        monthly_stock_info=prices_obs_universe,
         firm_info=firm_info,
         sic_info=sic_codes,
         monthly_inflation=monthly_inflation,
@@ -435,28 +434,23 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION) -> None:
     ff5_yearly: Optional[pd.DataFrame] = data.yearly_fama_french
     if ff5_monthly is None or ff5_yearly is None:
         raise ValueError("Fama-French factors data frames cannot be None")
-    prices_obs_universe: pd.DataFrame = data.stock_market_info
-    firm_info: pd.DataFrame = data.firm_info
-    sic_codes: pd.DataFrame = data.sic_info
-    monthly_inflation: Union[pd.DataFrame, pd.Series] = data.monthly_inflation
-    ff_industry_portfolios: pd.DataFrame = data.ff_industry_portfolios
 
     ff5_monthly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_monthly))
     ff5_yearly.to_csv(CONFIG.paths.raw_out(FILENAMES.FF5_factors_yearly))
 
-    prices_obs_universe.to_csv(
+    data.monthly_stock_info.to_csv(
         CONFIG.paths.raw_out(FILENAMES.Stock_prices), index=False
     )
 
-    firm_info.to_csv(CONFIG.paths.raw_out(FILENAMES.Firm_info), index=False)
+    data.firm_info.to_csv(CONFIG.paths.raw_out(FILENAMES.Firm_info), index=False)
 
-    sic_codes.to_csv(CONFIG.paths.raw_out(FILENAMES.Sic_description), index=False)
+    data.sic_info.to_csv(CONFIG.paths.raw_out(FILENAMES.Sic_description), index=False)
 
-    monthly_inflation.to_csv(
+    data.monthly_inflation.to_csv(
         CONFIG.paths.raw_out(FILENAMES.Inflation_info_monthly), index=True
     )
 
-    ff_industry_portfolios.to_csv(
+    data.ff_industry_portfolios.to_csv(
         CONFIG.paths.raw_out(FILENAMES.FF5_industry_portfolios), index=False
     )
 

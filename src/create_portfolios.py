@@ -1,4 +1,4 @@
-from typing import Any, List, Literal, Tuple
+from typing import List, Literal, Tuple
 
 import numpy as np
 import pandas as pd
@@ -7,13 +7,13 @@ from configs import CONFIG, CONFIGURATION, FILENAMES, DATAFRAME_CONTAINER
 
 
 # utils function to discount values based on inflation
-def _inflation_discount(inflation_info: pd.DataFrame, value: float) -> pd.Series:
+def _inflation_discount(inflation: pd.DataFrame, value: float) -> pd.Series:
     """
     Function to discount a given value based on the inflation discount multiples.
 
     Parameters
     ----------
-    inflation_info : pd.DataFrame
+    inflation : pd.DataFrame
         DataFrame containing the inflation discount multiples with a datetime index.
     value : float
         The value to be discounted.
@@ -23,12 +23,12 @@ def _inflation_discount(inflation_info: pd.DataFrame, value: float) -> pd.Series
     pd.Series
         A Series containing the discounted values for each date.
     """
-    inflation_info = inflation_info.copy()
-    return inflation_info["Inflation multiple"] * value
+    inflation = inflation.copy()
+    return inflation["Inflation multiple"] * value
 
 
 def _present_value_inflation(
-    inflation_info: pd.DataFrame, values: pd.Series
+    inflation: pd.DataFrame, values: pd.Series
 ) -> pd.Series:
     """
     Function to adjust past prices to their present value based on the inflation discount multiples.
@@ -36,7 +36,7 @@ def _present_value_inflation(
     Parameters
     ----------
 
-    inflation_info : pd.DataFrame
+    inflation : pd.DataFrame
         DataFrame containing the inflation discount multiples with a datetime index.
     values : pd.Series
         A Series containing the values to be adjusted, indexed by date.
@@ -46,10 +46,13 @@ def _present_value_inflation(
     pd.Series
         A Series containing the inflation-adjusted values for each date.
     """
-    inflation_info = inflation_info.copy()
-    values = values.copy()
-    inflation_info = inflation_info.reindex(values.index).ffill()
-    return values / inflation_info["Inflation multiple"]
+    assert isinstance(inflation.index, pd.DatetimeIndex), "The index of the inflation dataframe should be a DatetimeIndex."
+    assert isinstance(values.index, pd.DatetimeIndex), "The index of the values series should be a DatetimeIndex."
+
+    inflation_multiple = inflation["Inflation multiple"]
+    matched_inflation = values.index.to_series().map(inflation_multiple)
+
+    return values / matched_inflation.to_numpy()
 
 
 # Import the data
@@ -101,7 +104,7 @@ def download_processed_data(
         config.logger.info("Successfully downloaded the processed data")
 
     return DATAFRAME_CONTAINER(
-        stock_market_info=stock_prices,
+        monthly_stock_info=stock_prices,
         firm_info=firm_info,
         sic_info=sic_codes,
         monthly_inflation=inflation,
@@ -141,7 +144,6 @@ def get_market_cap(
 
     Parameters
     ----------
-
     stock_prices : pd.DataFrame
         DataFrame containing stock prices with a datetime index.
     inflation : pd.DataFrame
@@ -154,6 +156,11 @@ def get_market_cap(
     pd.DataFrame
         A DataFrame containing the original stock prices information along with the market cap and present value market cap (if applicable) of each firm.
     """
+    # Asserts
+    assert "close" in stock_prices.columns, "Close price column is missing in the stock prices dataframe."
+    assert "sharesoutstanding" in stock_prices.columns, "Shares outstanding column is missing in the stock prices dataframe."
+    assert isinstance(stock_prices.index, pd.DatetimeIndex), "The index of the stock prices dataframe should be a DatetimeIndex."
+
     stock_prices = stock_prices.copy()
     stock_prices["market_cap"] = _compute_market_cap(
         stock_prices, "close", "sharesoutstanding"
@@ -161,7 +168,7 @@ def get_market_cap(
 
     if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
         stock_prices["market_cap_present_value"] = _present_value_inflation(
-            inflation_info=inflation, values=stock_prices["market_cap"]
+            inflation=inflation, values=stock_prices["market_cap"]
         )
 
     return stock_prices
@@ -196,16 +203,16 @@ def _apply_marketcap_cutoff_latestperiod(
         stock_prices.loc[latest_date].reset_index().drop_duplicates(subset=["gvkey"])
     )
 
-    result: pd.DataFrame = latest_prices[
-        latest_prices["market_cap"] >= marketcap_cutoff
-    ]
+    surviving_gvkeys = latest_prices.loc[latest_prices["market_cap"] >= marketcap_cutoff, "gvkey"].unique()
+
+    result = stock_prices[stock_prices["gvkey"].isin(surviving_gvkeys)].copy()
 
     num_firms_end: int = result["gvkey"].nunique()
 
     if config.LOG_INFO:
         config.logger.info(
             f"Applied market cap cutoff of {marketcap_cutoff} to the latest period ({latest_date.date()}).\
-            \nNumber of firms dropped: {num_firms_start - num_firms_end} ({num_firms_start}->{num_firms_end})"
+            \nNumber of firms dropped: {num_firms_start - num_firms_end} ({num_firms_start}->{num_firms_end}"
         )
 
     return result
@@ -216,6 +223,7 @@ def _apply_marketcap_cutoff_allperiods(
 ) -> pd.DataFrame:
     """
     Function to apply a market cap cutoff to the stock prices of all periods, discounting the market cap by inflation.
+    Only the entries with a market capitalisation above the cutoff in each period are kept.
     Parameters
     ----------
     stock_prices : pd.DataFrame
@@ -228,43 +236,34 @@ def _apply_marketcap_cutoff_allperiods(
     Returns
     -------
     pd.DataFrame
-        A DataFrame containing only the firms that meet the market cap cutoff in each period after discounting for inflation.
+        A DataFrame containing the market entries where the market cap meets the cutoff.
     """
     # Unpack the config:
     min_marketcap: float = config.MIN_MARKETCAP_FIRM
 
-    num_firms_start: int = stock_prices["gvkey"].nunique()
+    num_entries_before: int = stock_prices.shape[0]
 
     # Discount the market cap by inflation
     min_marketcap_discounted: pd.Series = _inflation_discount(
-        inflation_info=inflation, value=min_marketcap
+        inflation=inflation, value=min_marketcap
     )
 
     # Ensure alignment
-    min_marketcap_discounted = min_marketcap_discounted.reindex(stock_prices.index)
+    min_marketcap_discounted = min_marketcap_discounted.reindex(stock_prices.index).ffill()
 
     mask = stock_prices["market_cap"] >= min_marketcap_discounted
-    survivors = mask.groupby(stock_prices["gvkey"]).all()
-    filtered_stock_prices = stock_prices[
-        stock_prices["gvkey"].isin(survivors[survivors].index)
-    ]
 
-    # Order the filtered stock prices by date and keep only the latest entry for each gvkey
-    filtered_stock_prices_lastval = (
-        filtered_stock_prices.sort_index()
-        .drop_duplicates(subset=["gvkey"], keep="last")
-        .reset_index()
-    )
+    filtered_stock_prices: pd.DataFrame = stock_prices[mask]
 
-    num_firms_end: int = filtered_stock_prices_lastval["gvkey"].nunique()
+    num_entries_end: int = filtered_stock_prices.shape[0]
 
     if config.LOG_INFO:
         config.logger.info(
             f"Applied market cap cutoff of {min_marketcap} to all periods using inflation discounted values.\
-            \nNumber of firms dropped: {num_firms_start - num_firms_end} ({num_firms_start}->{num_firms_end})"
+            \nNumber of entries dropped: {num_entries_before - num_entries_end})"
         )
 
-    return filtered_stock_prices_lastval
+    return filtered_stock_prices
 
 
 def apply_marketcap_cutoff(
@@ -286,7 +285,7 @@ def apply_marketcap_cutoff(
     Returns
     -------
     pd.DataFrame
-        A DataFrame containing only the firms that meet the market cap cutoff according to the configuration.
+        A DataFrame containing the market entries where the market cap meets the cutoff according to the configuration.
     """
 
     # Apply market cap cutoff to filter the firms
@@ -340,15 +339,15 @@ def _format_sic_codes(
 
 
 def _format_firms_sic(
-    firms_df: pd.DataFrame, level: Literal[1, 2, 3, 4], sic_col: str = "siccode"
+    entries: pd.DataFrame, level: Literal[1, 2, 3, 4], sic_col: str = "siccode"
 ) -> pd.DataFrame:
     """
     Helper function to format firms' SIC codes to a given level.
 
     Parameters
     ----------
-    firms_df : pd.DataFrame
-        DataFrame containing firm information including SIC codes.
+    entries : pd.DataFrame
+        DataFrame containing firm SIC code and gvkey
     level : Literal[1,2,3,4]
         The desired SIC code level (1 to 4).
     sic_col : str = "siccode"
@@ -359,21 +358,25 @@ def _format_firms_sic(
     pd.DataFrame
         A DataFrame containing firms with SIC codes normalized to the specified level.
     """
+    # Make sure the necessary information is present
+    assert sic_col in entries.columns, f"{sic_col} column is missing in the entries dataframe."
+    assert "gvkey" in entries.columns, "gvkey column is missing in the entries dataframe."
+
     # Copy and format the firms
-    firms: pd.DataFrame = firms_df.copy()
-    firms.dropna(subset=[sic_col, "gvkey"], inplace=True)
+    entries: pd.DataFrame = entries.copy()
+    entries.dropna(subset=[sic_col, "gvkey"], inplace=True)
 
     # Normalise the sic code using floor division
-    firms["sic_level"] = np.floor(firms[sic_col] / (10 ** (4 - level))) * (
+    entries["sic_level"] = np.floor(entries[sic_col] / (10 ** (4 - level))) * (
         10 ** (4 - level)
     )
-    firms["sic_level"] = firms["sic_level"].astype("Int64")
+    entries["sic_level"] = entries["sic_level"].astype("Int64")
 
-    return firms
+    return entries
 
 
 def _assign_industry_to_firms_siclevel(
-    firm_descr: pd.DataFrame, sic_descr: pd.DataFrame, config: CONFIGURATION
+    entries: pd.DataFrame, sic_descr: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
     Function to assign the firms to a specific industry by sic code level.
@@ -382,8 +385,8 @@ def _assign_industry_to_firms_siclevel(
 
     Parameters
     ----------
-    firm_descr : pd.DataFrame
-        Dataframe containing firm information including sic codes.
+    entries : pd.DataFrame
+        Dataframe containing firm information per period including sic codes.
     sic_descr : pd.DataFrame
         Dataframe containing sic code descriptions.
     config : CONFIGURATION
@@ -402,15 +405,15 @@ def _assign_industry_to_firms_siclevel(
     sic_level: Literal[1, 2, 3, 4] = config.SIC_LEVEL
 
     # Format firms and sic codes according to the level
-    firms: pd.DataFrame = _format_firms_sic(firm_descr, sic_level)
+    firms: pd.DataFrame = _format_firms_sic(entries, sic_level)
     descr: pd.DataFrame = _format_sic_codes(sic_descr, sic_level)
 
     # Merge the two dataframes
-    merged = firms.merge(descr, on="sic_level", how="left")
-
-    result: pd.DataFrame = merged[["gvkey", "sic_level", "sicdescription"]].rename(
-        columns={"sic_level": "key", "sicdescription": "industry_name"}
-    )
+    result:pd.DataFrame = (firms
+                            .join(descr.set_index("sic_level"), on="sic_level", how="left")
+                            .rename(
+                                columns={"sic_level": "key", "sicdescription": "industry_name"}
+                            ))
 
     if config.LOG_INFO:
         config.logger.info(
@@ -421,15 +424,15 @@ def _assign_industry_to_firms_siclevel(
 
 
 def _assign_industry_firms_ffindustries(
-    firm_descr: pd.DataFrame, ff_industries: pd.DataFrame, config: CONFIGURATION
+    entries: pd.DataFrame, ff_industries: pd.DataFrame, config: CONFIGURATION
 ) -> pd.DataFrame:
     """
     Function to assign to each firm its industry based on the Fama-French industry classification.
 
     Parameters
     ----------
-    firm_descr : pd.DataFrame
-        DataFrame containing firm information including SIC codes.
+    entries : pd.DataFrame
+        DataFrame containing market entries of the firms including their SIC codes.
     ff_industries : pd.DataFrame
         DataFrame containing Fama-French industry classifications for each SIC-code.
     config : CONFIGURATION
@@ -440,13 +443,14 @@ def _assign_industry_firms_ffindustries(
     pd.DataFrame
         DataFrame with the gvkey of the firms and their corresponding Fama-French industry classification.
     """
+    # Asserts to make sure the necessary information is present
+    assert "gvkey" in entries.columns, "gvkey column is missing in the market entries dataframe."
+    assert "siccode" in entries.columns, "siccode column is missing in the market entries dataframe."
 
     # Merge the two dataframes
-    merged = firm_descr.merge(ff_industries, on="siccode", how="right")
-
-    result: pd.DataFrame = merged[["gvkey", "industry_id", "industry_name"]].rename(
-        columns={"industry_id": "key"}
-    )
+    result: pd.DataFrame = (entries
+                            .join(ff_industries.set_index("siccode"), on="siccode", how="left")
+                            .rename(columns={"industry_id": "key"}))
 
     if config.LOG_INFO:
         config.logger.info(
@@ -456,11 +460,11 @@ def _assign_industry_firms_ffindustries(
     return result
 
 
-def assign_industry_to_firms(
-    firm_descr: pd.DataFrame,
+def assign_industry(
+    entries: pd.DataFrame,
     sic_descr: pd.DataFrame,
     ff_industry_portfolios: pd.DataFrame,
-    config=CONFIGURATION,
+    config:CONFIGURATION,
 ) -> pd.DataFrame:
     """
     Function to assign an industry to each firm based on the configuration.
@@ -468,8 +472,8 @@ def assign_industry_to_firms(
 
     Parameters
     ----------
-    firm_descr : pd.DataFrame
-        DataFrame containing firm information including SIC codes.
+    entries : pd.DataFrame
+        DataFrame containing stock info per period including SIC codes.
     sic_descr : pd.DataFrame
         DataFrame containing SIC code descriptions.
     ff_industry_portfolios : pd.DataFrame
@@ -480,196 +484,195 @@ def assign_industry_to_firms(
     Returns
     -------
     pd.DataFrame
-        DataFrame with the gvkey of the firms and their corresponding industry classification according to the configuration.
+        DataFrame of the market entries with a new column "industry" containing the industry classification of each firm according to the configuration.
     """
 
     if config.INDUSTRY_CLASSIFICATION_METHOD == "Sic_level":
-        return _assign_industry_to_firms_siclevel(firm_descr, sic_descr, config)
+        return _assign_industry_to_firms_siclevel(entries, sic_descr, config)
     else:
         return _assign_industry_firms_ffindustries(
-            firm_descr, ff_industry_portfolios, config
+            entries, ff_industry_portfolios, config
         )
 
 
-# Portfolio formatting
-def intersect_portfolios_price_companyinfo(
-    firm_industry_assignment: pd.DataFrame,
-    firms_to_keep: pd.DataFrame,
-    firm_descr: pd.DataFrame,
-) -> pd.DataFrame:
+
+def portfolio_information(
+    portfolio_subset: pd.DataFrame,
+    industry_name: str,
+    MarketCapID: str,
+    config: CONFIGURATION
+)->pd.Series:
     """
-    Function to intersect the portfolios dataframe with the firm information dataframe.
+    Function to add additional information to the portfolio, such as the number of firms and total market cap.
 
     Parameters
     ----------
-    firm_industry_assignment : pd.DataFrame
-        DataFrame containing information of which industry to assign a firm to.
-    firms_to_keep: pd.DataFrame
-        Dataframe containing the prices info
-    firm_descr : pd.DataFrame
-        DataFrame containing firm information.
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame containing only the firms that are present in both firms_to_keep and firm information dataframes.
-    """
-    final_portfolio: pd.DataFrame = firm_industry_assignment.merge(
-        firms_to_keep, on="gvkey", how="inner"
-    ).merge(firm_descr[["gvkey", "companyname"]], on="gvkey", how="left")
-    return final_portfolio
-
-
-def get_portfolio_constitution(portfolio_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Function to create a dataframe to keep track of the portfolio constitution.
-    Groups these together and sorts them by industry total market cap and individual market cap.
-
-    Parameters
-    ----------
-    portfolio_df : pd.DataFrame
-        DataFrame containing portfolio information.
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame containing the portfolio constitution details.
-    """
-    # Create a new dataframe that tracks the constitution of the portfolio
-    final_portfolio_constitution: pd.DataFrame = portfolio_df.drop_duplicates(
-        subset="gvkey", keep="last"
-    ).set_index(["industry_name", "gvkey"])[
-        [
-            "companyname",
-            "market_cap",
-            "close",
-            "sharesoutstanding",
-            "key",
-            "date",
-            "market_cap_present_value",
-        ]
-    ]
-
-    group_totals: pd.Series = final_portfolio_constitution.groupby(level=0)[
-        "market_cap"
-    ].sum()
-    group_key: pd.Index = final_portfolio_constitution.index.get_level_values(0).map(
-        group_totals.to_dict()
-    )
-
-    sorted_main_portfolios = (
-        final_portfolio_constitution.assign(_group_total_mcap=group_key)
-        .sort_values(
-            by=["_group_total_mcap", "market_cap"],
-            ascending=[False, False],
-            kind="mergesort",
-        )
-        .drop(columns="_group_total_mcap")
-    )
-
-    return sorted_main_portfolios
-
-
-# Get market cap based sub-portfolios
-def compute_marketcap_portfolios(
-    main_portfolios: pd.DataFrame, config: CONFIGURATION
-) -> pd.DataFrame:
-    """
-    Function to create sub-portfolios based on market capitalization within each industry.
-    Creates a large-cap and a small-cap portfolio for each industry.
-
-    Parameters
-    ----------
-    main_portfolios : pd.DataFrame
-        DataFrame containing the main portfolio information.
+    portfolio_subset : pd.DataFrame
+        DataFrame containing the subset of the portfolio for a specific industry and date.
+    industry_name: str
+        The name of the industry for which the portfolio is being created.
+    MaerketCapID: str
+        The market cap based sub-portfolio identifier (e.g. "all", "large_cap", "small_cap").
     config : CONFIGURATION
         Configuration of the project.
 
     Returns
     -------
-    pd.DataFrame
-        A DataFrame containing the sub-portfolios based on market capitalization."""
+    pd.Series
+        A Series containing the  information for the industry portfolio.
+    """
+
+    return pd.Series({
+        "industry_name": industry_name,
+        "num_firms": portfolio_subset["gvkey"].nunique(),
+        "total_market_cap": portfolio_subset["market_cap"].sum(),
+        "total_presentvalue_marketcap": (portfolio_subset["market_cap_present_value"].sum() if "market_cap_present_value" in portfolio_subset.columns else np.nan),
+        "gvkeys": portfolio_subset["gvkey"].unique().tolist(),
+        "firm_names": portfolio_subset["companyname"].unique().tolist(),
+        "return": calculate_portfolio_return(portfolio_subset, config),
+        "MarketCapID": MarketCapID,
+        "date": portfolio_subset.index[0],
+    })
+
+
+def marketcap_subportfolio_information(
+    industry_subset: pd.DataFrame,
+    industry_name: str,
+    config: CONFIGURATION
+)->List[pd.Series]:
+    """
+    Function to create the market cap based sub-portfolio information for a given industry portfolio subset.
+    
+    Parameters
+    ----------
+    industry_subset : pd.DataFrame
+        DataFrame containing the subset of the portfolio for a specific industry and date.
+    industry_name: str
+        The name of the industry for which the portfolio is being created.
+    config : CONFIGURATION
+        Configuration of the project.
+    
+    Returns
+    -------
+    List[pd.Series]
+        A list of Series, each containing the information for a market cap based sub-portfolio (large cap and small cap) within the industry portfolio.
+    """
     num_firms_portfolio = config.MARKETCAP_PORTFOLIO_NUMBER_FIRMS
     percentile_portfolio = config.MARKETCAP_PORTFOLIO_PERCENTILE
 
-    df = main_portfolios.copy()
-    df["MarketCapID"] = "all"
-
-    new_blocks = []
-
-    industries = df.index.get_level_values(0).unique()
-
-    for industry in industries:
-        industry_df = df.xs(industry, level=0)
-
-        # determine cutoff
-        if percentile_portfolio is not None:
-            cutoff = int(len(industry_df) * percentile_portfolio)
-        elif num_firms_portfolio is not None:
-            cutoff = min(num_firms_portfolio, len(industry_df) // 2)
-        else:
-            raise ValueError(
-                "Either percentile or number of firms for portfolios needs to be provided."
-            )
-        if cutoff == 0:
-            continue
-
-        top_firms = industry_df.iloc[:cutoff].copy()
-        bottom_firms = industry_df.iloc[-cutoff:].copy()
-
-        top_firms["MarketCapID"] = "large_cap"
-        bottom_firms["MarketCapID"] = "small_cap"
-
-        # assign new level-0 labels
-        top_firms.index = pd.MultiIndex.from_product(
-            [[f"{industry} - Large Cap"], top_firms.index], names=df.index.names
+    # determine cutoff
+    if percentile_portfolio is not None:
+        cutoff = int(len(industry_subset) * percentile_portfolio)
+    elif num_firms_portfolio is not None:
+        cutoff = min(num_firms_portfolio, len(industry_subset) // 2)
+    else:
+        raise ValueError(
+            "Either percentile or number of firms for portfolios needs to be provided."
         )
+    if cutoff == 0:
+        return []
+    
+    # order firms by marketcap
+    industry_subset_sorted: pd.DataFrame = industry_subset.sort_values("market_cap", ascending=False)
 
-        bottom_firms.index = pd.MultiIndex.from_product(
-            [[f"{industry} - Small Cap"], bottom_firms.index], names=df.index.names
-        )
+    top_firms = industry_subset_sorted.iloc[:cutoff].copy()
+    bottom_firms = industry_subset_sorted.iloc[-cutoff:].copy()
 
-        new_blocks.extend([top_firms, bottom_firms])
-
-    if new_blocks:
-        df = pd.concat([df, *new_blocks])
-
-    return df.reset_index()
+    return [
+        portfolio_information(top_firms, industry_name + " - Large Cap", "large_cap", config),
+        portfolio_information(bottom_firms, industry_name + " - Small Cap", "small_cap", config)
+    ]
 
 
-def aggregate_portfolio(portfolio: pd.DataFrame, config: CONFIGURATION) -> pd.DataFrame:
+def calculate_portfolio_return(
+    portfolio_subset: pd.DataFrame, config: CONFIGURATION
+) -> float:
     """
-    Function to aggregate the portfolio by SIC description and sort them.
+    Function to calculate the return of a portfolio subset based on the returns of the individual stocks and their weights.
 
     Parameters
     ----------
-    portfolio : pd.DataFrame
-        DataFrame containing the portfolio information.
-    config: CONFIGURATION
-        COnfiguration of the project
+    portfolio_subset : pd.DataFrame
+        DataFrame containing the subset of the portfolio for a specific industry and date, including stock returns and market caps.
+    config : CONFIGURATION
+        Configuration of the project.
 
     Returns
     -------
-    pd.DataFrame
-        A DataFrame containing the aggregated and sorted SIC portfolios.
+    float
+        The calculated return of the portfolio.
     """
-    sic_portfolios: pd.DataFrame = (
-        portfolio.groupby("industry_name")
-        .agg(
-            key=("key", "first"),
-            num_firms=("gvkey", "nunique"),
-            total_market_cap=("market_cap", "sum"),
-            total_presentvalue_marketcap=("market_cap_present_value", "sum"),
-            gvkeys=("gvkey", lambda x: list(x)),
-            marketcap_id=("MarketCapID", "first"),
-        )
-        .reset_index()
+    # Calculate the weights of the stocks in the portfolio
+    portfolio_subset["Weight"] = _calculate_weight_in_portfolio(
+        firm_subset=portfolio_subset, config=config
     )
 
-    if config.LOG_INFO:
-        config.logger.info("Successfully aggregated the portfolios by SIC description")
+    # Calculate the return of the portfolio as the weighted sum of the returns of the individual stocks
+    portfolio_return: float = (portfolio_subset["Weight"] * portfolio_subset["return"]).sum()
 
-    return sic_portfolios
+    return portfolio_return
+
+
+def create_all_portfolios(
+    market_industry_info: pd.DataFrame,
+    config: CONFIGURATION,
+)->Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Function to create the industry portfolios based on the market entries and their assigned industries.
+    Creates the standard industry portfolios and their sub-portfolios based on market capitalization.
+    Returns first the description of the portfolios and then the returns.
+    
+    Parameters
+    ----------
+    market_industry_info : pd.DataFrame
+        DataFrame containing the market entries of the firms and their assigned industries.
+    config : CONFIGURATION
+        Configuration of the project.
+    
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame]
+        A tuple containing two DataFrames:
+        - The first DataFrame contains the description of the portfolios, including their industry classification and market cap based sub-portfolios.
+        - The second DataFrame contains the returns of the portfolios.
+    """
+
+    # Asserts
+    assert "industry_name" in market_industry_info.columns, "The industry_name column is missing in the market industry info dataframe."
+    assert "gvkey" in market_industry_info.columns, "The gvkey column is missing in the market industry info dataframe."
+    assert "market_cap_present_value" in market_industry_info.columns, "The market_cap_present_value column is missing in the market industry info dataframe."
+    assert "market_cap" in market_industry_info.columns, "The market_cap column is missing in the market industry info dataframe."
+    assert "close" in market_industry_info.columns, "The close column is missing in the market industry info dataframe."
+
+    market_industry_info = market_industry_info.sort_values(["gvkey", "date"])
+
+    # Get the lagged market cap to calculate the weight if necessary
+    market_industry_info["Lagged_MarketCap"] = market_industry_info.groupby("gvkey")["market_cap"].shift(1)
+    market_industry_info = market_industry_info.dropna(subset=["Lagged_MarketCap"])
+
+    dates: pd.DatetimeIndex = market_industry_info.index.unique(level=0).sort_values()
+    industries: pd.Series = market_industry_info["industry_name"].unique()
+
+    rows: List[pd.Series] = []
+
+    for date in dates:  # Skip the first date, since there is no data
+        subset_date: pd.DataFrame = market_industry_info.loc[date]
+        for industry in industries:
+            subset = subset_date[subset_date["industry_name"] == industry].copy()
+
+            if subset.empty:
+                continue
+        
+            rows.append(portfolio_information(portfolio_subset=subset, 
+                                              industry_name=industry,
+                                              MarketCapID="all", 
+                                              config=config))
+
+            rows.extend(marketcap_subportfolio_information(subset, industry, config))
+            
+    industry_data = pd.DataFrame(rows).set_index(["date", "industry_name"])
+
+    return industry_data
 
 
 def drop_small_portfolios(
@@ -692,6 +695,8 @@ def drop_small_portfolios(
     """
     min_firms_per_portfolio: int = config.CUTOFF_FIRMS_PER_PORTFOLIO
 
+    portfolio_df = portfolio_df.reset_index()
+
     num_portfolios_start: int = portfolio_df["industry_name"].nunique()
 
     result: pd.DataFrame = portfolio_df[
@@ -706,8 +711,47 @@ def drop_small_portfolios(
             \nNumber of portfolios dropped: {num_portfolios_start - num_portfolios_end} ({num_portfolios_start}->{num_portfolios_end})"
         )
 
-    return result
+    return result.set_index(["date", "industry_name"])
 
+
+def drop_sparse_portfolios(
+    portfolio_df: pd.DataFrame, config: CONFIGURATION
+) -> pd.DataFrame:
+    """
+    Function to drop portfolios that do not appear often enough in the data, 
+    meaning that they do not have enough returns data to be included in the analysis.
+    
+    Parameters
+    ----------
+    portfolio_df : pd.DataFrame
+        DataFrame containing the portfolio information.
+    config : CONFIGURATION
+        Configuration of the project.
+        
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing only the portfolios that appear in at least a minimum number of periods.
+     """
+     
+    min_count_occurances: int = config.MIN_OCCURANCES_PORTFOLIOS 
+
+    portfolio_df = portfolio_df.reset_index()
+
+    num_portfolios_start: int = portfolio_df["industry_name"].nunique()
+
+    counts: pd.Series = portfolio_df["industry_name"].value_counts()
+    result = portfolio_df[portfolio_df["industry_name"].isin(counts[counts >= min_count_occurances].index)]
+
+    num_portfolios_end: int = result["industry_name"].nunique()
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Dropped non-significant portfolios with less than {min_count_occurances} occurances.\
+            \nNumber of portfolios dropped: {num_portfolios_start - num_portfolios_end} ({num_portfolios_start}->{num_portfolios_end})"
+        )
+
+    return result.set_index(["date", "industry_name"])
 
 # Get the returns from portfolios
 def get_returns_stocks(stock_prices: pd.DataFrame) -> pd.DataFrame:
@@ -736,7 +780,7 @@ def get_returns_stocks(stock_prices: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Reset the date as index and sort it
-    returns: pd.DataFrame = sorted_prices.set_index("date").dropna().sort_index()
+    returns: pd.DataFrame = sorted_prices.set_index("date").dropna(subset=["return"]).sort_index()
 
     return returns
 
@@ -757,9 +801,9 @@ def _calculate_weight_in_portfolio_marketcap(firm_subset: pd.DataFrame) -> pd.Se
         A Series containing the weight of each firm in the portfolio based on their market capitalization.
     """
     # Compute the lagged Market Cap
-    firm_subset["Lagged_MarketCap"] = firm_subset.groupby("gvkey")["market_cap"].shift(
-        1
-    )
+    #firm_subset["Lagged_MarketCap"] = firm_subset.groupby("gvkey")["market_cap"].shift(
+        #1
+    #)
 
     # Compute the weight as the MarketCap weight in the portfolio
     weights: pd.Series = firm_subset["Lagged_MarketCap"] / firm_subset.groupby("date")[
@@ -821,70 +865,10 @@ def _calculate_weight_in_portfolio(
         raise ValueError("Invalid aggregation method.")
 
 
-def calculate_portfolio_returns(
-    portfolios_df: pd.DataFrame, prices_df: pd.DataFrame, config: CONFIGURATION
-) -> pd.DataFrame:
-    """
-    Function to calculate the returns of the different portfolios.
-
-    Parameters
-    ----------
-    portfolios_df : pd.DataFrame
-        DataFrame containing the portfolio information.
-    prices_df : pd.DataFrame
-        DataFrame containing stock prices with a datetime index.
-    config : CONFIGURATION
-        Configuration of the project.
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame containing the returns of the portfolios.
-    """
-
-    # Get the stock returns and format the portfolios
-    prices_and_returns: pd.DataFrame = get_returns_stocks(prices_df)
-    portfolios_df = portfolios_df.reset_index()
-
-    # Initialize the dataframe to store portfolio prices
-    col_names: List[str] = portfolios_df["industry_name"].drop_duplicates().tolist()
-    portfolio_returns = pd.DataFrame(columns=col_names)
-
-    for _, row in portfolios_df.iterrows():
-        # Get the prices and returns for the gvkeys in the portfolio
-        gvkeys: List[Any] = row["gvkeys"]
-        prices_and_returns_subset: pd.DataFrame = prices_and_returns[
-            prices_and_returns["gvkey"].isin(gvkeys)
-        ].copy()
-
-        # Calculate the weights per stock
-        prices_and_returns_subset["Weight"] = _calculate_weight_in_portfolio(
-            firm_subset=prices_and_returns_subset, config=config
-        )
-
-        # Multiply the returns by the weights and sum them to get the portfolio return
-        portfolio_returns[row["industry_name"]] = (
-            (prices_and_returns_subset["Weight"] * prices_and_returns_subset["return"])
-            .groupby("date")
-            .sum()
-        )
-
-    # Format the portfolio returns dataframe
-    portfolio_returns_formated: pd.DataFrame = portfolio_returns.rename_axis(
-        "date"
-    ).dropna(how="all")
-
-    if config.LOG_INFO:
-        config.logger.info("Successfully calculated the portfolio returns")
-
-    return portfolio_returns_formated
-
-
 def create_portfolios(
-    firm_descr: pd.DataFrame,
     sic_descr: pd.DataFrame,
     ff_industry_portfolios: pd.DataFrame,
-    firms_to_keep: pd.DataFrame,
+    entries: pd.DataFrame,
     config: CONFIGURATION,
 ) -> pd.DataFrame:
     """
@@ -892,14 +876,12 @@ def create_portfolios(
 
     Parameters
     ----------
-    firm_descr : pd.DataFrame
-        DataFrame containing firm information including SIC codes.
     sic_descr : pd.DataFrame
         DataFrame containing SIC code descriptions.
     ff_industry_portfolios : pd.DataFrame
         DataFrame containing Fama-French industry classifications for each SIC-code.
-    firms_to_keep: pd.DataFrame
-        DataFrame containing the firms that passed the market cap cutoff.
+    entries: pd.DataFrame
+        DataFrame containing the market entries of the firms to include in the index.
     config : CONFIGURATION
         Configuration of the project.
 
@@ -907,52 +889,37 @@ def create_portfolios(
     -------
     pd.DataFrame
         A DataFrame containing the final portfolios with their industry classification and market cap based sub-portfolios.
+        These are generated for each period and might differ.
     """
 
     # Assign each firm to an industry
-    firm_industry_assignment: pd.DataFrame = assign_industry_to_firms(
-        firm_descr=firm_descr,
+    industry_assignment_per_period: pd.DataFrame = assign_industry(
+        entries=entries,
         sic_descr=sic_descr,
         ff_industry_portfolios=ff_industry_portfolios,
         config=config,
     )
 
-    # Add the information about firms and their stock prices
-    industry_assignment_with_info: pd.DataFrame = (
-        intersect_portfolios_price_companyinfo(
-            firm_industry_assignment=firm_industry_assignment,
-            firms_to_keep=firms_to_keep,
-            firm_descr=firm_descr,
-        )
-    )
+    # Calculate the returns
+    prices_and_returns: pd.DataFrame = get_returns_stocks(industry_assignment_per_period)
 
-    # Get the constitution of the portfolios
-    industry_portfolio_constitution: pd.DataFrame = get_portfolio_constitution(
-        portfolio_df=industry_assignment_with_info
-    )
 
-    # Add the sub-portfolios by market cap
-    industry_marketcap_portfolios: pd.DataFrame = compute_marketcap_portfolios(
-        main_portfolios=industry_portfolio_constitution, config=config
-    )
-
-    # Aggregate the portfolios
-    industry_marketcap_portfolios_agg: pd.DataFrame = aggregate_portfolio(
-        portfolio=industry_marketcap_portfolios, config=config
-    )
+    portfolios: pd.DataFrame = create_all_portfolios(prices_and_returns, config)
 
     # Drop non-significant portfolios
     industry_marketcap_portfolios_filtered: pd.DataFrame = drop_small_portfolios(
-        portfolio_df=industry_marketcap_portfolios_agg, config=config
+        portfolio_df=portfolios, config=config
     )
 
+    industry_marketcap_portfolios_filtered = drop_sparse_portfolios(
+        portfolio_df=industry_marketcap_portfolios_filtered, config=config
+    )
     return industry_marketcap_portfolios_filtered
 
 
 # Save the results
 def save_portfolio_returns_constitution(
-    portfolio_returns: pd.DataFrame,
-    portfolio_constitution: pd.DataFrame,
+    portfolios: pd.DataFrame,
     config: CONFIGURATION,
 ) -> None:
     """
@@ -960,10 +927,8 @@ def save_portfolio_returns_constitution(
 
     Parameters
     ----------
-    portfolio_returns : pd.DataFrame
-        DataFrame containing the returns of the portfolios.
-    portfolio_constitution : pd.DataFrame
-        DataFrame containing the constitution details of the portfolios.
+    portfolios : pd.DataFrame
+        DataFrame containing the returns and info of the portfolios.
     config : CONFIGURATION
         Configuration of the project.
 
@@ -980,10 +945,7 @@ def save_portfolio_returns_constitution(
         )
 
     # Save the results
-    portfolio_returns.to_csv(config.paths.portfolios_out(FILENAMES.Portfolio_returns))
-    portfolio_constitution.to_csv(
-        config.paths.portfolios_out(FILENAMES.Portfolio_construction_details)
-    )
+    portfolios.to_csv(config.paths.portfolios_out(FILENAMES.Portfolio_info))
 
     if config.LOG_INFO:
         config.logger.info(
@@ -996,7 +958,7 @@ def save_portfolio_returns_constitution(
 # Main pipeline function
 def create_portfolios_and_returns(
     config: CONFIGURATION,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> pd.DataFrame:
     """
     Main function to orchestrate the creation of portfolios based on SIC codes and market capitalization.
     This function acts as a pipeline and calls all other helper functions defined above.
@@ -1008,10 +970,8 @@ def create_portfolios_and_returns(
 
     Returns
     -------
-    Tuple[pd.DataFrame, pd.DataFrame]
-        Two pandas dataframes
-        One for the returns of the different portfolios
-        One for their constitution details
+    pd.DataFrame
+        DataFrame containing the info and returns per portfolios
     """
     # Dowload the data
     data: DATAFRAME_CONTAINER = download_processed_data(config)
@@ -1021,40 +981,42 @@ def create_portfolios_and_returns(
     if config.LOG_INFO:
         config.logger.info("Starting to create portfolios....\n" + "-" * 80)
 
+
+    stock_market_merged_info: pd.DataFrame = (data.monthly_stock_info
+        .reset_index()
+        .merge(
+            data.firm_info[["gvkey", "siccode", "companyname"]],
+            on="gvkey",
+            how="left",)
+        .set_index("date")
+        .dropna())
+
     # Compute the market cap
-    stock_market_info_marketcap: pd.DataFrame = get_market_cap(
-        stock_prices=data.stock_market_info,
+    monthly_stock_info_marketcap: pd.DataFrame = get_market_cap(
+        stock_prices=stock_market_merged_info,
         inflation=data.monthly_inflation,
-        config=config,
+        config=config
     )
 
     # Cutoff the firms based on their market cap
-    firms_to_keep: pd.DataFrame = apply_marketcap_cutoff(
-        stock_prices=stock_market_info_marketcap,
+    stock_entries_to_keep: pd.DataFrame = apply_marketcap_cutoff(
+        stock_prices=monthly_stock_info_marketcap,
         inflation=data.monthly_inflation,
         config=config,
     )
 
     # Create the portfolios
     portfolios: pd.DataFrame = create_portfolios(
-        firm_descr=data.firm_info,
         sic_descr=data.sic_info,
         ff_industry_portfolios=data.ff_industry_portfolios,
-        firms_to_keep=firms_to_keep,
-        config=config,
-    )
-
-    # Calculate the returns of the portfolios from their constituents
-    industry_marketcap_portfolio_returns: pd.DataFrame = calculate_portfolio_returns(
-        portfolios_df=portfolios,
-        prices_df=stock_market_info_marketcap,
+        entries=stock_entries_to_keep,
         config=config,
     )
 
     if config.LOG_INFO:
         config.logger.info("Successfully created portfolios")
 
-    return industry_marketcap_portfolio_returns, portfolios
+    return portfolios
 
 
 def create_save_portfolios(config: CONFIGURATION) -> None:
@@ -1072,12 +1034,11 @@ def create_save_portfolios(config: CONFIGURATION) -> None:
         This function runs the pipeline and saves the results to CSV files.
     """
     # Create the portfolios and their returns
-    portfolio_returns, portfolio_constitution = create_portfolios_and_returns(config)
+    portfolios = create_portfolios_and_returns(config)
 
     # Save the results
     save_portfolio_returns_constitution(
-        portfolio_returns=portfolio_returns,
-        portfolio_constitution=portfolio_constitution,
+        portfolios = portfolios,
         config=config,
     )
 

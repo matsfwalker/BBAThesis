@@ -285,9 +285,11 @@ class CONFIGURATION:
 
     # Data-cleaning configs
     THRESHOLD_MISSING_SHARESOUTSTANDING: float
+    EXCHANGES_TO_REMOVE: List[str]
 
     # Portfolio creation configs
     CUTOFF_FIRMS_PER_PORTFOLIO: int
+    MIN_OCCURANCES_PORTFOLIOS: int
     MIN_MARKETCAP_FIRM: float
     DISCOUNT_MARKETCAP_FIRM_INFLATION: bool
     INDUSTRY_CLASSIFICATION_METHOD: Literal["Sic_level", "Fama-French_portfolios"]
@@ -421,7 +423,7 @@ class PLOTTING_CONFIGURATIONS:
 
 @dataclass(slots=True)
 class DATAFRAME_CONTAINER:
-    stock_market_info: pd.DataFrame
+    monthly_stock_info: pd.DataFrame
     firm_info: pd.DataFrame
     sic_info: pd.DataFrame
     monthly_inflation: Union[pd.Series, pd.DataFrame]

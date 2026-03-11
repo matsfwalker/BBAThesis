@@ -44,6 +44,10 @@ CONFIG = CONFIGURATION(
     # Data-cleaning configs #
     #########################
     THRESHOLD_MISSING_SHARESOUTSTANDING=0.5,  # Relative threshold of missing sharesoutstanding to drop a ticker
+    EXCHANGES_TO_REMOVE=["Toronto Stock Exchange", "TSX Venture Exchange",              # Canadian Exchanges
+                        "Other-OTC", "OTC Bulletin Board",                              # OTC-traded equities
+                        "Non-traded Company or Security", "Unlisted Evaluated Equity"   # Non-regulated exchanges
+],
     #######################################
     # Industry Portfolio creation configs #
     #######################################
@@ -55,6 +59,7 @@ CONFIG = CONFIGURATION(
     ##############################
     CUTOFF_FIRMS_PER_PORTFOLIO=10,  # Number of firms needed per portfolio
     MIN_MARKETCAP_FIRM=100_000.0,  # Minimum latest market cap needed for a firm to be considered
+    MIN_OCCURANCES_PORTFOLIOS=26,  # Minimum number of occurances of a portfolio in the data to be included in the analysis
     DISCOUNT_MARKETCAP_FIRM_INFLATION=True,  # Discount the marketcap of firms. If this is used, then the minimum market cap is in real terms, not nominal and applied to each period.
     PORTFOLIO_AGGREGATION_METHOD="MarketCap",  # Method to aggregate firms into portfolios
     ########################

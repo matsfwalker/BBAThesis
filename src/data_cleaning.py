@@ -69,13 +69,79 @@ def download_raw_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     return DATAFRAME_CONTAINER(
         monthly_fama_french=factors_monthly_raw,
         yearly_fama_french=factors_yearly_raw,
-        stock_market_info=stock_prices_raw,
+        monthly_stock_info=stock_prices_raw,
         firm_info=firm_info_raw,
         sic_info=sic_desc_raw,
         monthly_inflation=monthly_inflation_info_raw,
         ff_industry_portfolios=ff_industry_portfolios_raw,
     )
 
+
+def save_processed_data(
+    data: DATAFRAME_CONTAINER,
+    config: CONFIGURATION,
+) -> None:
+    """
+    Function to save all of the processed data in the data/processed dir.
+
+    Parameters
+    ----------
+    data: DATAFRAME_CONTAINER
+        Container containing the all processed dataframes of the project
+    config: CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    None
+    """
+    if config.LOG_INFO:
+        config.logger.info("Starting saving processed files....\n" + "-" * 80)
+
+    # Unpack the data
+    factors_monthly_processed: Optional[pd.DataFrame] = data.monthly_fama_french
+    factors_yearly_processed: Optional[pd.DataFrame] = data.yearly_fama_french
+    if factors_monthly_processed is None or factors_yearly_processed is None:
+        raise ValueError("Factors dataframes cannot be None")
+    stock_prices_intersected: pd.DataFrame = data.monthly_stock_info
+    firm_info_processed: pd.DataFrame = data.firm_info
+    sic_desc_processed: pd.DataFrame = data.sic_info
+    inflation_processed: Union[pd.DataFrame, pd.Series] = data.monthly_inflation
+    ff_industry_portfolios_processed: pd.DataFrame = data.ff_industry_portfolios
+
+    factors_monthly_processed.to_csv(
+        config.paths.processed_out(FILENAMES.FF5_factors_monthly)
+    )
+    factors_yearly_processed.to_csv(
+        config.paths.processed_out(FILENAMES.FF5_factors_yearly)
+    )
+
+    stock_prices_intersected.to_csv(config.paths.processed_out(FILENAMES.Stock_prices))
+
+    firm_info_processed.to_csv(
+        config.paths.processed_out(FILENAMES.Firm_info), index=False
+    )
+
+    sic_desc_processed.to_csv(
+        config.paths.processed_out(FILENAMES.Sic_description), index=False
+    )
+
+    inflation_processed.to_csv(
+        config.paths.processed_out(FILENAMES.Inflation_info_monthly)
+    )
+    ff_industry_portfolios_processed.to_csv(
+        config.paths.processed_out(FILENAMES.FF5_industry_portfolios), index=False
+    )
+
+    if config.LOG_INFO:
+        config.logger.info("Finished saving processed files")
+
+    return
+
+
+###################
+# Factor Cleaning #
+###################
 
 def clean_factors(
     factors_monthly_raw: pd.DataFrame,
@@ -115,6 +181,10 @@ def clean_factors(
 
     return factors_monthly_raw_decimal, factors_yearly_raw_decimal
 
+
+#####################
+# Industry Cleaning #
+#####################
 
 def clean_ff_industry_portfolio(
     ff_industry_portfolios_raw: pd.DataFrame, config: CONFIGURATION
@@ -170,280 +240,9 @@ def clean_ff_industry_portfolio(
     return result
 
 
-def _remove_firms_missing_sharesoutstanding(
-    stock_price: pd.DataFrame, config: CONFIGURATION
-) -> pd.DataFrame:
-    """
-    Function to remove those firms that have less shares outstanding than the threshold.
-    Used to remove illiquid firms
-
-    Parameters
-    ----------
-    stock_price : pd.DataFrame
-        Dataframe containing the info about the stock and shares outstanding
-    config : CONFIGURATION
-        Configuration of the project
-
-    Returns
-    -------
-    pd.DataFrame
-        New dataframe without the illiquid stocks"""
-    # Unpack the configurations
-    threshold_missing_shares: float = config.THRESHOLD_MISSING_SHARESOUTSTANDING
-
-    # Remove columns with over threshold unactive trading (sharesoutstanding = 0)
-    mask_activity = stock_price.groupby("gvkey")["sharesoutstanding"].apply(
-        lambda s: s.le(0).sum() / s.size < threshold_missing_shares
-    )
-
-    result: pd.DataFrame = stock_price[
-        stock_price["gvkey"].isin(mask_activity[mask_activity].index)
-    ]
-
-    if config.LOG_INFO:
-        config.logger.info(
-            "Removed firms with more than "
-            + str(threshold_missing_shares * 100)
-            + "% of missing shares outstanding data"
-        )
-    return result
-
-def _remove_non_significant_exchanges(
-    stock_price: pd.DataFrame, config: CONFIGURATION)->pd.DataFrame:
-    """
-    Function to remove firms listed on stock exchanges that should not be included.
-
-    Parameters
-    ----------
-    stock_price : pd.DataFrame
-        Dataframe containing the info about the stock and shares outstanding
-    config : CONFIGURATION
-        Configuration of the project
-        
-    Returns
-    -------
-    pd.DataFrame
-        New dataframe without the firms listed on non significant stock exchanges"""
-    
-    result: pd.DataFrame = stock_price[~stock_price["exchange"].isin(["Toronto Stock Exchange"])]
-
-    if config.LOG_INFO:
-        config.logger.info(
-            f"Removed firms listed on non significant stock exchanges (e.g. Toronto Stock Exchange). Removed {stock_price['gvkey'].nunique() - result['gvkey'].nunique()} firms"
-        )
-        
-    return result
-
-def clean_stock_prices(
-    stock_prices_raw: pd.DataFrame, config: CONFIGURATION
-) -> pd.DataFrame:
-    """
-    Function to clean the stock prices
-
-    Parameters
-    ----------
-    stock_prices_raw : pd.DataFrame
-        Dataframe containing the raw stock prices
-    config : CONFIGURATION
-        Configuration of the project
-
-    Returns
-    -------
-    pd.DataFrame
-        Processed stock prices
-    """
-
-    stock_prices_raw = stock_prices_raw.reset_index()
-
-    # Drop duplicate gvkey-date entries
-    stock_prices_raw = stock_prices_raw.drop_duplicates(subset=["gvkey", "date"])
-
-    # Convert numeric columns to numbers
-    numeric_cols = ["close", "sharesoutstanding"]
-    stock_prices_raw[numeric_cols] = stock_prices_raw[numeric_cols].apply(
-        pd.to_numeric, errors="coerce"
-    )
-
-    # Remove firms with missing shares outstanding
-    stock_prices_cleaned = _remove_firms_missing_sharesoutstanding(
-        stock_prices_raw, config
-    )
-
-    stock_prices_cleaned = _remove_non_significant_exchanges(stock_prices_cleaned, config)
-
-
-    if config.LOG_INFO:
-        config.logger.info(f"Cleaned the stock prices. {stock_prices_raw['gvkey'].nunique()} -> {stock_prices_cleaned['gvkey'].nunique()} firms")
-        config.logger.debug(f"Cleaned stock prices sample:\n{stock_prices_cleaned.head(5)}")
-
-    return stock_prices_cleaned
-
-
-def _fill_missing_values(
-    stock_price: pd.DataFrame, config: CONFIGURATION
-) -> pd.DataFrame:
-    """
-    Function to fill the missing dates (weekends are always missing) with the friday's data
-
-    Parameters
-    ----------
-    stock_price : pd.DataFrame
-        Dataframe containing the prices and other info that will be filled
-    config: CONFIGURATION
-        Configuration of the project
-
-    Returns
-    -------
-    pd.DataFrame
-        Dataframe with the filled dates"""
-    # Sort values again
-    stock_price = stock_price.reset_index(names=["date"]).sort_values(["gvkey", "date"])
-
-    # Fill the nas in shares outstanding with the previous value
-    stock_price["sharesoutstanding"] = stock_price.groupby("gvkey")[
-        "sharesoutstanding"
-    ].ffill()
-
-    # Fill the nas in close with the mean of previous and last
-    stock_price["close"] = stock_price.groupby("gvkey")["close"].transform(
-        lambda s: s.interpolate(method="linear", limit_area="inside")
-    )
-
-    # Reset date as index
-    stock_price.set_index("date", inplace=True)
-
-    if config.LOG_INFO:
-        config.logger.info(
-            "Filled missing values in stock prices with forward fill for shares outstanding and linear interpolation for close price"
-        )
-    return stock_price
-
-
-def intersect_stockprices_monthlyfactors(
-    stock_prices_cleaned: pd.DataFrame,
-    factors_monthly_processed: pd.DataFrame,
-    config: CONFIGURATION,
-) -> pd.DataFrame:
-    """
-    Function to intersect the dates of the stockprices and monthlyfactors and only keep those dates
-    that are present in both
-
-    Parameters
-    ----------
-    stock_prices_cleaned : pd.DataFrame,
-        Cleaned stock prices
-    factors_monthly_processed : pd.DataFrame
-        Processed monthly factors
-    config : CONFIGURATION
-        Configuration of the project
-
-    Returns
-    -------
-    pd.DataFrame
-        Stock prices with the common dates
-    """
-
-    # Create full calendar-day index from min to max date
-    full_idx: pd.DatetimeIndex = pd.date_range(
-        stock_prices_cleaned["date"].min(),
-        factors_monthly_processed.index.max(),
-        freq="D",
-    )
-
-    stock_prices_reindexed = (
-        stock_prices_cleaned.set_index(["gvkey", "date"])
-        .sort_index()
-        .groupby(level="gvkey", group_keys=False)
-        .apply(
-            lambda g: g.reindex(
-                pd.MultiIndex.from_product(
-                    [[g.index.get_level_values("gvkey")[0]], full_idx],
-                    names=["gvkey", "date"],
-                )
-            ).infer_objects(copy=False).ffill(limit=2)
-        )
-        .reset_index(level="gvkey")
-    )
-
-    # Intersect the dates with the Fama French factors
-    common_dates = stock_prices_reindexed.index.intersection(
-        factors_monthly_processed.index
-    )
-
-    # Only keep the common dates
-    stock_prices_common_date: pd.DataFrame = stock_prices_reindexed.loc[
-        common_dates
-    ].sort_index()
-
-    # Fill the missing values
-    stock_prices_filled: pd.DataFrame = _fill_missing_values(
-        stock_prices_common_date, config
-    )
-
-    if config.LOG_INFO:
-        config.logger.info(
-            "Intersected stock prices and monthly factors on common dates index"
-        )
-        config.logger.debug(f"Stock prices after intersection and filling missing values sample:\n{stock_prices_filled.head(5)}")
-
-    return stock_prices_filled
-
-
-def clean_firm_info(firm_info_raw: pd.DataFrame, config: CONFIGURATION) -> pd.DataFrame:
-    """
-    Function to clean the firm info
-
-    Parameters
-    ----------
-    firm_info_raw : pd.DataFrame
-        Raw firm info
-    config : CONFIGURATION
-        Configuration of the project
-
-    Returns
-    -------
-    pd.DataFrame
-        Processed firm info"""
-
-    if config.LOG_INFO:
-        config.logger.info("Cleaned the firm info")
-        config.logger.debug(f"Cleaned firm info sample:\n{firm_info_raw.head(5)}")
-
-    return firm_info_raw
-
-
-def clean_sic_desc_raw(
-    sic_desc_raw: pd.DataFrame, config: CONFIGURATION
-) -> pd.DataFrame:
-    """
-    Function to clean the sic codes
-
-    Parameters
-    ----------
-    sic_desc_raw : pd.DataFrame
-        Raw SIC description
-    config : CONFIGURATION
-        Configuration of the project
-
-    Returns
-    -------
-    pd.DataFrame
-        Processed SIC description"""
-    # Remove all inactive SIC codes
-    sic_desc_raw = sic_desc_raw[sic_desc_raw["status"] == "A"]
-
-    # Remove the status column
-    sic_desc_raw = sic_desc_raw.drop(columns=["status"])
-
-    if config.LOG_INFO:
-        config.logger.info(
-            "Cleaned the SIC description data by removing inactive codes and status column"
-        )
-        config.logger.debug(f"Cleaned SIC description sample:\n +{sic_desc_raw.head(5)}"
-        )
-
-    return sic_desc_raw
-
+######################
+# Inflation Cleaning #
+######################
 
 def calculate_cum_inflation_multiplier(
     raw_monthly_inflation: pd.DataFrame, config: CONFIGURATION
@@ -529,66 +328,274 @@ def intersect_stockprices_inflation(
     return inflation_filled
 
 
-def save_processed_data(
-    data: DATAFRAME_CONTAINER,
-    config: CONFIGURATION,
-) -> None:
+#######################
+# Stock Info Cleaning #
+#######################
+
+def _remove_firms_missing_sharesoutstanding(
+    stock_price: pd.DataFrame, config: CONFIGURATION
+) -> pd.DataFrame:
     """
-    Function to save all of the processed data in the data/processed dir.
+    Function to remove those firms that have less shares outstanding than the threshold.
+    Used to remove illiquid firms
 
     Parameters
     ----------
-    data: DATAFRAME_CONTAINER
-        Container containing the all processed dataframes of the project
+    stock_price : pd.DataFrame
+        Dataframe containing the info about the stock and shares outstanding
+    config : CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    pd.DataFrame
+        New dataframe without the illiquid stocks"""
+    # Unpack the configurations
+    threshold_missing_shares: float = config.THRESHOLD_MISSING_SHARESOUTSTANDING
+
+    # Remove columns with over threshold unactive trading (sharesoutstanding = 0)
+    mask_activity = stock_price.groupby("gvkey")["sharesoutstanding"].apply(
+        lambda s: s.le(0).sum() / s.size < threshold_missing_shares
+    )
+
+    result: pd.DataFrame = stock_price[
+        stock_price["gvkey"].isin(mask_activity[mask_activity].index)
+    ]
+
+    if config.LOG_INFO:
+        config.logger.info(
+            "Removed firms with more than "
+            + str(threshold_missing_shares * 100)
+            + "% of missing shares outstanding data"
+        )
+    return result
+
+
+def _remove_non_significant_exchanges(
+    stock_price: pd.DataFrame, config: CONFIGURATION)->pd.DataFrame:
+    """
+    Function to remove firms listed on stock exchanges that should not be included.
+
+    Parameters
+    ----------
+    stock_price : pd.DataFrame
+        Dataframe containing the info about the stock and shares outstanding
+    config : CONFIGURATION
+        Configuration of the project
+        
+    Returns
+    -------
+    pd.DataFrame
+        New dataframe without the firms listed on non significant stock exchanges"""
+    
+    result: pd.DataFrame = stock_price[~stock_price["exchange"].isin(
+        config.EXCHANGES_TO_REMOVE
+        )]
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Removed firms listed on non significant stock exchanges (e.g. Toronto Stock Exchange). Removed {stock_price['gvkey'].nunique() - result['gvkey'].nunique()} firms"
+        )
+        
+    return result
+
+
+def clean_stock_prices(
+    stock_prices_raw: pd.DataFrame, config: CONFIGURATION
+) -> pd.DataFrame:
+    """
+    Function to clean the stock prices
+
+    Parameters
+    ----------
+    stock_prices_raw : pd.DataFrame
+        Dataframe containing the raw stock prices
+    config : CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    pd.DataFrame
+        Processed stock prices
+    """
+
+    stock_prices_raw = stock_prices_raw.reset_index()
+
+    # Drop duplicate gvkey-date entries
+    stock_prices_raw = stock_prices_raw.drop_duplicates(subset=["gvkey", "date"])
+
+    # Convert numeric columns to numbers
+    numeric_cols = ["close", "sharesoutstanding"]
+    stock_prices_raw[numeric_cols] = stock_prices_raw[numeric_cols].apply(
+        pd.to_numeric, errors="coerce"
+    )
+
+    # Remove firms with missing shares outstanding
+    stock_prices_cleaned = _remove_firms_missing_sharesoutstanding(
+        stock_prices_raw, config
+    )
+
+    stock_prices_cleaned = _remove_non_significant_exchanges(stock_prices_cleaned, config)
+
+
+    if config.LOG_INFO:
+        config.logger.info(f"Cleaned the stock prices. {stock_prices_raw['gvkey'].nunique()} -> {stock_prices_cleaned['gvkey'].nunique()} firms")
+        config.logger.debug(f"Cleaned stock prices sample:\n{stock_prices_cleaned.head(5)}")
+
+    return stock_prices_cleaned
+
+
+def _fill_missing_values(
+    stock_price: pd.DataFrame, config: CONFIGURATION
+) -> pd.DataFrame:
+    """
+    Function to fill the missing dates (weekends are always missing) with the friday's data
+
+    Parameters
+    ----------
+    stock_price : pd.DataFrame
+        Dataframe containing the prices and other info that will be filled
     config: CONFIGURATION
         Configuration of the project
 
     Returns
     -------
-    None
+    pd.DataFrame
+        Dataframe with the filled dates"""
+    # Sort values again
+    stock_price = stock_price.reset_index(names=["date"]).sort_values(["gvkey", "date"])
+
+    # Fill the nas in shares outstanding with the previous value
+    stock_price["sharesoutstanding"] = stock_price.groupby("gvkey")[
+        "sharesoutstanding"
+    ].ffill(limit=1)
+
+    # Fill the nas in close with the last available value (usually weekends)
+    stock_price["close"] = stock_price.groupby("gvkey")["close"].ffill(limit=1)
+
+    # Reset date as index
+    stock_price.set_index("date", inplace=True)
+
+    if config.LOG_INFO:
+        config.logger.info(
+            "Filled missing values in stock prices with forward fill for shares outstanding and forward fill for close price to adjust for missing weekend data."
+        )
+    return stock_price
+
+
+def intersect_stockprices_monthlyfactors(
+    stock_prices_cleaned: pd.DataFrame,
+    factors_monthly_processed: pd.DataFrame,
+    config: CONFIGURATION,
+) -> pd.DataFrame:
     """
+    Function to intersect the dates of the stockprices and monthlyfactors and only keep those dates
+    that are present in both
+
+    Parameters
+    ----------
+    stock_prices_cleaned : pd.DataFrame,
+        Cleaned stock prices
+    factors_monthly_processed : pd.DataFrame
+        Processed monthly factors
+    config : CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    pd.DataFrame
+        Stock prices with the common dates
+    """
+
+    # Resample the stock values based on a monthly frequency
+    stock_prices_monthly = (
+        stock_prices_cleaned
+            .set_index("date")
+            .groupby("gvkey")["close"]
+            .resample("M")
+            .last()
+    )
+
+    # Intersect the dates with the Fama French factors
+    common_dates = stock_prices_monthly.index.intersection(
+        factors_monthly_processed.index
+    )
+
+    # Only keep the common dates
+    stock_prices_common_date: pd.DataFrame = stock_prices_monthly.loc[
+        common_dates
+    ].sort_index()
+
+    # Fill the missing values
+    stock_prices_filled: pd.DataFrame = _fill_missing_values(
+        stock_prices_common_date, config
+    )
+
     if config.LOG_INFO:
-        config.logger.info("Starting saving processed files....\n" + "-" * 80)
+        config.logger.info(
+            "Intersected stock prices and monthly factors on common dates index"
+        )
+        config.logger.debug(f"Stock prices after intersection and filling missing values sample:\n{stock_prices_filled.head(5)}")
 
-    # Unpack the data
-    factors_monthly_processed: Optional[pd.DataFrame] = data.monthly_fama_french
-    factors_yearly_processed: Optional[pd.DataFrame] = data.yearly_fama_french
-    if factors_monthly_processed is None or factors_yearly_processed is None:
-        raise ValueError("Factors dataframes cannot be None")
-    stock_prices_intersected: pd.DataFrame = data.stock_market_info
-    firm_info_processed: pd.DataFrame = data.firm_info
-    sic_desc_processed: pd.DataFrame = data.sic_info
-    inflation_processed: Union[pd.DataFrame, pd.Series] = data.monthly_inflation
-    ff_industry_portfolios_processed: pd.DataFrame = data.ff_industry_portfolios
+    return stock_prices_filled
 
-    factors_monthly_processed.to_csv(
-        config.paths.processed_out(FILENAMES.FF5_factors_monthly)
-    )
-    factors_yearly_processed.to_csv(
-        config.paths.processed_out(FILENAMES.FF5_factors_yearly)
-    )
 
-    stock_prices_intersected.to_csv(config.paths.processed_out(FILENAMES.Stock_prices))
+def clean_firm_info(firm_info_raw: pd.DataFrame, config: CONFIGURATION) -> pd.DataFrame:
+    """
+    Function to clean the firm info
 
-    firm_info_processed.to_csv(
-        config.paths.processed_out(FILENAMES.Firm_info), index=False
-    )
+    Parameters
+    ----------
+    firm_info_raw : pd.DataFrame
+        Raw firm info
+    config : CONFIGURATION
+        Configuration of the project
 
-    sic_desc_processed.to_csv(
-        config.paths.processed_out(FILENAMES.Sic_description), index=False
-    )
-
-    inflation_processed.to_csv(
-        config.paths.processed_out(FILENAMES.Inflation_info_monthly)
-    )
-    ff_industry_portfolios_processed.to_csv(
-        config.paths.processed_out(FILENAMES.FF5_industry_portfolios), index=False
-    )
+    Returns
+    -------
+    pd.DataFrame
+        Processed firm info"""
 
     if config.LOG_INFO:
-        config.logger.info("Finished saving processed files")
+        config.logger.info("Cleaned the firm info")
+        config.logger.debug(f"Cleaned firm info sample:\n{firm_info_raw.head(5)}")
 
-    return
+    return firm_info_raw
+
+
+def clean_sic_desc_raw(
+    sic_desc_raw: pd.DataFrame, config: CONFIGURATION
+) -> pd.DataFrame:
+    """
+    Function to clean the sic codes
+
+    Parameters
+    ----------
+    sic_desc_raw : pd.DataFrame
+        Raw SIC description
+    config : CONFIGURATION
+        Configuration of the project
+
+    Returns
+    -------
+    pd.DataFrame
+        Processed SIC description"""
+    # Remove all inactive SIC codes
+    sic_desc_raw = sic_desc_raw[sic_desc_raw["status"] == "A"]
+
+    # Remove the status column
+    sic_desc_raw = sic_desc_raw.drop(columns=["status"])
+
+    if config.LOG_INFO:
+        config.logger.info(
+            "Cleaned the SIC description data by removing inactive codes and status column"
+        )
+        config.logger.debug(f"Cleaned SIC description sample:\n +{sic_desc_raw.head(5)}"
+        )
+
+    return sic_desc_raw
+
+
 
 
 def clean_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
@@ -626,7 +633,7 @@ def clean_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
 
     # Clean the stock data
     stock_prices_cleaned: pd.DataFrame = clean_stock_prices(
-        raw_data.stock_market_info, config
+        raw_data.monthly_stock_info, config
     )
 
     # Intersect the stock prices with the monthly factors
@@ -655,7 +662,7 @@ def clean_data(config: CONFIGURATION) -> DATAFRAME_CONTAINER:
     return DATAFRAME_CONTAINER(
         monthly_fama_french=factors_monthly_processed,
         yearly_fama_french=factors_yearly_processed,
-        stock_market_info=stock_prices_intersected,
+        monthly_stock_info=stock_prices_intersected,
         firm_info=firm_info_processed,
         sic_info=sic_desc_processed,
         monthly_inflation=cum_inflation_multiplier_intersected,

@@ -38,11 +38,14 @@ def download_processed_data(
         index_col="date",
     )
 
-    portfolio_returns_monthly: pd.DataFrame = pd.read_csv(
-        config.paths.portfolios_read(FILENAMES.Portfolio_returns),
+    portfolio_info_monthly: pd.DataFrame = pd.read_csv(
+        config.paths.portfolios_read(FILENAMES.Portfolio_info),
         parse_dates=["date"],
-        index_col="date",
+        index_col=["date"],
     )
+
+    # Bring the portfolio info to the format of a dataframe with the date as index and the columns as the different industries
+    portfolio_returns_monthly: pd.DataFrame = portfolio_info_monthly.pivot(columns="industry_name", values="return")
 
     if config.LOG_INFO:
         config.logger.info("Downloaded processed data successfully")
@@ -450,24 +453,15 @@ def _date_ranges_windows(
 
     curr_date: dt.datetime = start_date
     last_start_date: Optional[dt.datetime] = None
+    
     while curr_date < end_date:
-        window_end_date: dt.datetime = curr_date + pd.DateOffset(
-            months=window_size_months
-        )
-        date_ranges[_date_range_to_str(curr_date, window_end_date)] = (
-            curr_date,
-            window_end_date,
-        )
-        last_start_date = curr_date
+        window_end_date = min(curr_date + pd.DateOffset(months=window_size_months), end_date)
+        date_ranges[_date_range_to_str(curr_date, window_end_date)] = (curr_date, window_end_date)
+        if window_end_date == end_date:
+            break
         curr_date = window_end_date
 
-    if last_start_date != end_date and last_start_date is not None:
-        date_ranges[_date_range_to_str(last_start_date, end_date)] = (
-            last_start_date,
-            end_date,
-        )
-
-    return date_ranges
+        return date_ranges
 
 
 def construct_date_ranges(
@@ -645,7 +639,7 @@ def build_model(
 
     # Test the significance using the t-test
     factor_loadings_monthly = t_test_significance(
-        factor_loadings_monthly, config=CONFIG
+        factor_loadings_monthly, config=config
     )
 
     # Calculate the factors in different periods
