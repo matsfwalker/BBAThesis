@@ -1,7 +1,7 @@
 from typing import Tuple, List, Dict, Union, Optional
 import pandas as pd
-# Import the configurations
 from configs import PROJ_CONFIG, CONFIGURATION_CLASS, FILENAMES_CLASS, DATAFRAME_CONTAINER
+import warnings
 
 ######################
 # Import and Exports #
@@ -148,6 +148,286 @@ def save_processed_data(
 
     return
 
+#########
+# Utils #
+
+#########
+
+def _inflation_discount(inflation: pd.DataFrame, value: float) -> pd.Series:
+    """
+    Function to discount a given value based on the inflation discount multiples.
+
+    Parameters
+    ----------
+    inflation : pd.DataFrame
+        DataFrame containing the inflation discount multiples with a datetime index.
+    value : float
+        The value to be discounted.
+
+    Returns
+    -------
+    pd.Series
+        A Series containing the discounted values for each date.
+    """
+    inflation = inflation.copy()
+    return inflation["Inflation multiple"] * value
+
+
+def _present_value_inflation(
+    inflation: pd.DataFrame, values: pd.Series
+) -> pd.Series:
+    """
+    Function to adjust past prices to their present value based on the inflation discount multiples.
+
+    Parameters
+    ----------
+
+    inflation : pd.DataFrame
+        DataFrame containing the inflation discount multiples with a datetime index.
+    values : pd.Series
+        A Series containing the values to be adjusted, indexed by date.
+
+    Returns
+    -------
+    pd.Series
+        A Series containing the inflation-adjusted values for each date.
+    """
+    assert isinstance(inflation.index, pd.DatetimeIndex), "The index of the inflation dataframe should be a DatetimeIndex."
+    assert isinstance(values.index, pd.DatetimeIndex), "The index of the values series should be a DatetimeIndex."
+
+    inflation_multiple = inflation["Inflation multiple"]
+    matched_inflation = values.index.to_series().map(inflation_multiple)
+
+    return values / matched_inflation.to_numpy()
+
+
+# Get the returns from portfolios (No longer Used)
+def __get_returns_stocks(stock_prices: pd.DataFrame) -> pd.DataFrame:
+    """
+    Function to compute the returns of individual stocks.
+    Parameters
+    ----------
+    stock_prices : pd.DataFrame
+        DataFrame containing stock prices with a datetime index.
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the returns of individual stocks in addition to the existing info.
+    """
+
+    warnings.warn(
+        "__get_returns_stocks() is deprecated, as the returns are received directly from wrds",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    # Reset the index of the dataframe
+    prices_noindex: pd.DataFrame = stock_prices.reset_index(names=["date"])
+
+    # Sort the prices, first by gvkey and then by date
+    sorted_prices: pd.DataFrame = prices_noindex.sort_values(
+        ["gvkey", "date"]
+    ).drop_duplicates(subset=["gvkey", "date"])
+
+    # Calculate their return
+    sorted_prices["return"] = sorted_prices.groupby("gvkey")["close"].pct_change(
+        fill_method=None
+    )
+
+    # Reset the date as index and sort it
+    returns: pd.DataFrame = sorted_prices.set_index("date").dropna(subset=["return"]).sort_index()
+
+    return returns
+
+
+#############
+# MarketCap #
+#############
+
+def _compute_market_cap(
+    df_info: pd.DataFrame, price_column: str, shares_column: str
+) -> pd.Series:
+    """
+    Function to compute the market cap of firms.
+
+    Parameters
+    ----------
+    df_info : pd.DataFrame
+        DataFrame containing firm information including price and shares outstanding.
+    price_column : str
+        The name of the column containing stock prices.
+    shares_column : str
+        The name of the column containing shares outstanding.
+
+    Returns
+    -------
+    pd.Series
+        A Series containing the market cap of each firm.
+    """
+    return df_info[price_column] * df_info[shares_column]
+
+
+def get_market_cap(
+    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION_CLASS
+) -> pd.DataFrame:
+    """
+    Function to add the market cap and present value market cap of firms to the dataframe.
+
+    Parameters
+    ----------
+    stock_prices : pd.DataFrame
+        DataFrame containing stock prices with a datetime index.
+    inflation : pd.DataFrame
+        DataFrame containing the inflation discount multiples with a datetime index.
+    config : CONFIGURATION_CLASS
+        Configuration of the project.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the original stock prices information along with the market cap and present value market cap (if applicable) of each firm.
+    """
+    # Asserts
+    assert "close" in stock_prices.columns, "Close price column is missing in the stock prices dataframe."
+    assert "sharesoutstanding" in stock_prices.columns, "Shares outstanding column is missing in the stock prices dataframe."
+    assert isinstance(stock_prices.index, pd.DatetimeIndex), "The index of the stock prices dataframe should be a DatetimeIndex."
+
+    stock_prices = stock_prices.copy()
+    stock_prices["market_cap"] = _compute_market_cap(
+        stock_prices, "close", "sharesoutstanding"
+    )
+    stock_prices["Lagged_MarketCap"] = stock_prices.groupby("gvkey")["market_cap"].shift(1)
+
+    if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
+        stock_prices["market_cap_present_value"] = _present_value_inflation(
+            inflation=inflation, values=stock_prices["market_cap"]
+        )
+
+    return stock_prices
+
+# MarketCap cutoff
+def _apply_marketcap_cutoff_latestperiod(
+    stock_prices: pd.DataFrame, config: CONFIGURATION_CLASS
+) -> pd.DataFrame:
+    """
+    Function to apply a market cap cutoff to the latest stock prices.
+    Parameters
+    ----------
+    stock_prices : pd.DataFrame
+        DataFrame containing stock prices with a datetime index.
+    config : CONFIGURATION_CLASS
+        Configuration of the project.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing only the firms that meet the market cap cutoff at the latest date.
+    """
+    # Unpack the config:
+    marketcap_cutoff: float = config.MIN_MARKETCAP_FIRM
+
+    num_firms_start: int = stock_prices["gvkey"].nunique()
+
+    # Get the latest date and corresponding entries
+    latest_date: pd.Timestamp = stock_prices.index.max()
+    latest_prices: pd.DataFrame = (
+        stock_prices.loc[latest_date].reset_index().drop_duplicates(subset=["gvkey"])
+    )
+
+    surviving_gvkeys = latest_prices.loc[latest_prices["Lagged_MarketCap"] >= marketcap_cutoff, "gvkey"].unique()
+
+    result = stock_prices[stock_prices["gvkey"].isin(surviving_gvkeys)].copy()
+
+    num_firms_end: int = result["gvkey"].nunique()
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Applied market cap cutoff of {marketcap_cutoff} to the latest period ({latest_date.date()}).\
+            \nNumber of firms dropped: {num_firms_start - num_firms_end} ({num_firms_start}->{num_firms_end}"
+        )
+
+    return result
+
+
+def _apply_marketcap_cutoff_allperiods(
+    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION_CLASS
+) -> pd.DataFrame:
+    """
+    Function to apply a market cap cutoff to the stock prices of all periods, discounting the market cap by inflation.
+    Only the entries with a market capitalisation above the cutoff in each period are kept.
+    Parameters
+    ----------
+    stock_prices : pd.DataFrame
+        DataFrame containing stock prices with a datetime index.
+    inflation : pd.DataFrame
+        DataFrame containing inflation discount multiples with a datetime index.
+    config : CONFIGURATION_CLASS
+        Configuration of the project.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the market entries where the market cap meets the cutoff.
+    """
+    # Unpack the config:
+    min_marketcap: float = config.MIN_MARKETCAP_FIRM
+
+    num_entries_before: int = stock_prices.shape[0]
+
+    # Discount the market cap by inflation
+    min_marketcap_discounted: pd.Series = _inflation_discount(
+        inflation=inflation, value=min_marketcap
+    )
+
+    # Ensure alignment
+    min_marketcap_discounted = min_marketcap_discounted.reindex(stock_prices.index).ffill()
+
+    mask = stock_prices["Lagged_MarketCap"] >= min_marketcap_discounted
+
+    filtered_stock_prices: pd.DataFrame = stock_prices[mask]
+
+    num_entries_end: int = filtered_stock_prices.shape[0]
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Applied market cap cutoff of {min_marketcap} to all periods using inflation discounted values.\
+            \nNumber of entries dropped: {num_entries_before - num_entries_end}"
+        )
+
+    return filtered_stock_prices
+
+
+def apply_marketcap_cutoff(
+    stock_prices: pd.DataFrame, inflation: pd.DataFrame, config: CONFIGURATION_CLASS
+) -> pd.DataFrame:
+    """
+    Function to apply the market cap cutoff.
+    This can either be cutoff on the latest date or across the entire period after discounting for inflation, depending on the configuration.
+
+    Parameters
+    ----------
+    stock_prices : pd.DataFrame
+        DataFrame containing stock prices with a datetime index.
+    inflation : pd.DataFrame
+        DataFrame containing inflation discount multiples with a datetime index.
+    config : CONFIGURATION_CLASS
+        Configuration of the project.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the market entries where the market cap meets the cutoff according to the configuration.
+    """
+
+    # Apply market cap cutoff to filter the firms
+    if config.DISCOUNT_MARKETCAP_FIRM_INFLATION:
+        return _apply_marketcap_cutoff_allperiods(
+            stock_prices=stock_prices, inflation=inflation, config=config
+        )
+    else:
+        return _apply_marketcap_cutoff_latestperiod(
+            stock_prices=stock_prices, config=config
+        )
 
 ###################
 # Factor Cleaning #
@@ -537,8 +817,8 @@ def clean_stock_prices(
     # remove the firms whose close price is too small
     monthly_stock_prices_cleaned3 = _remove_small_firms(monthly_stock_prices_cleaned2, config)
 
+    # Clip the monthly return
     monthly_stock_prices_clipped_returns_cleaned: pd.DataFrame = _clip_monthly_return(monthly_stock_prices_cleaned3, config=config)
-
 
     if config.LOG_INFO:
         config.logger.info(f"Cleaned the stock prices. {monthly_stock_prices_raw['gvkey'].nunique()} -> {monthly_stock_prices_clipped_returns_cleaned['gvkey'].nunique()} firms")
@@ -749,10 +1029,13 @@ def clean_data(config: CONFIGURATION_CLASS) -> DATAFRAME_CONTAINER:
         monthly_monthly_stock_prices_cleaned, monthly_factors_processed, config
     )
 
+    # Process the firm info
     firm_info_processed: pd.DataFrame = clean_firm_info(raw_data.firm_info, config)
 
+    # Process the SIC description
     sic_desc_processed: pd.DataFrame = clean_sic_desc_raw(raw_data.sic_info, config)
 
+    # Process the inflation info
     cum_inflation_multiplier: pd.DataFrame = calculate_cum_inflation_multiplier(
         raw_data.monthly_inflation, config
     )
@@ -762,13 +1045,27 @@ def clean_data(config: CONFIGURATION_CLASS) -> DATAFRAME_CONTAINER:
             monthly_factors_processed, cum_inflation_multiplier, config
         )
 
+    # Calculate the marketcap for all entries
+    monthly_stock_prices_with_marketcap: pd.DataFrame = get_market_cap(
+        stock_prices=monthly_stock_prices_intersected,
+        inflation=cum_inflation_multiplier_intersected,
+        config=config
+    )
+
+    # Apply the marketcap cutoff
+    monthly_stock_prices_market_cap_filtered: pd.DataFrame = apply_marketcap_cutoff(
+        stock_prices=monthly_stock_prices_with_marketcap,
+        inflation=cum_inflation_multiplier_intersected,
+        config=config
+    )
+
     if config.LOG_INFO:
         config.logger.info("Completed cleaning process\n")
 
     return DATAFRAME_CONTAINER(
         monthly_fama_french=monthly_factors_processed,
         yearly_fama_french=factors_yearly_processed,
-        monthly_stock_info=monthly_stock_prices_intersected,
+        monthly_stock_info=monthly_stock_prices_market_cap_filtered,
         firm_info=firm_info_processed,
         sic_info=sic_desc_processed,
         monthly_inflation=cum_inflation_multiplier_intersected,
