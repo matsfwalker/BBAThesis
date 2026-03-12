@@ -141,36 +141,37 @@ class BasePathConfig:
 
     @staticmethod
     def save_df(
-        df: pd.DataFrame,
+        df: Union[pd.DataFrame, pd.Series],
         path: Path,
         *args,
         save_description: bool = True,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Method to save a CSV file of the pd.DataFrame under the specified address.
-        By default, it also saves the description of each dataframe in another file 
+        By default, it also saves the description of each dataframe in another file
         called dir/description_{filename}.csv
-        
+
         Parameters
         ----------
-        df: pd.DataFrame
-            Dataframe to be saved
+        df: Union[pd.DataFrame, pd.Series]
+            Dataframe or Series to be saved
         path: Path
             Path of where to save the df
         save_description: bool = True
             Whether to also save the description.
             Default is True
-            
+
         Returns
         -------
         None"""
 
-        df.to_csv(path_or_buf= path, *args, **kwargs)
+        df.to_csv(path, *args, **kwargs)
 
         if save_description:
-            descr: pd.DataFrame = df.describe()
-            descr.to_csv(path_or_buf= path.parent / f"description_{path.stem}.csv")
+            descr: Union[pd.DataFrame, pd.Series] = df.describe()
+            descr.to_csv(path_or_buf=path.parent / f"description_{path.stem}.csv")
+
 
 # Paths for the analysis (only access to model and portfolio data and results)
 @dataclass(frozen=True, slots=True)
@@ -193,24 +194,28 @@ class PATH_ANALYSIS_CLASS(BasePathConfig):
             case _:
                 raise ValueError(f"Type {type_} is not allowed")
 
-    def portfolios_save(self,df: pd.DataFrame, stem: str, *args, **kwargs) -> None:
-        path: Path =  self.create_filename_with_date(
+    def portfolios_save(
+        self, df: Union[pd.DataFrame, pd.Series], stem: str, *args, **kwargs
+    ) -> None:
+        path: Path = self.create_filename_with_date(
             stem=stem,
             type_="portfolios",
             suffix=self.suffix,
         )
-        self.save_df(df,path, *args, **kwargs)
+        self.save_df(df, path, *args, **kwargs)
 
     def portfolios_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="portfolios", date=date)
 
-    def results_save(self, df: pd.DataFrame, stem: str, *args, **kwargs) -> None:
+    def results_save(
+        self, df: Union[pd.DataFrame, pd.Series], stem: str, *args, **kwargs
+    ) -> None:
         path: Path = self.create_filename_with_date(
             stem=stem,
             type_="results",
             suffix=self.suffix,
         )
-        self.save_df(df,path, *args, **kwargs)
+        self.save_df(df, path, *args, **kwargs)
 
     def results_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="results", date=date)
@@ -249,19 +254,23 @@ class PATH_CONFIG_CLASS(BasePathConfig):
             case _:
                 raise ValueError(f"Type {type_} is not allowed")
 
-    def raw_save(self, df: pd.DataFrame, stem: str, *args, **kwargs) -> None:
+    def raw_save(
+        self, df: Union[pd.DataFrame, pd.Series], stem: str, *args, **kwargs
+    ) -> None:
         path: Path = self.create_filename_with_date(
             stem=stem,
             type_="raw",
             suffix=self.suffix,
         )
-        self.save_df(df, path,*args, **kwargs)
+        self.save_df(df, path, *args, **kwargs)
 
     def raw_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="raw", date=date)
 
-    def processed_save(self, df: pd.DataFrame, stem: str, *args, **kwargs) -> None:
-        path: Path =  self.create_filename_with_date(
+    def processed_save(
+        self, df: Union[pd.DataFrame, pd.Series], stem: str, *args, **kwargs
+    ) -> None:
+        path: Path = self.create_filename_with_date(
             stem=stem,
             type_="processed",
             suffix=self.suffix,
@@ -272,7 +281,9 @@ class PATH_CONFIG_CLASS(BasePathConfig):
     def processed_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="processed", date=date)
 
-    def portfolios_save(self, df:pd.DataFrame, stem: str, *args, **kwargs) -> None:
+    def portfolios_save(
+        self, df: Union[pd.DataFrame, pd.Series], stem: str, *args, **kwargs
+    ) -> None:
         path: Path = self.create_filename_with_date(
             stem=stem,
             type_="portfolios",
@@ -283,7 +294,9 @@ class PATH_CONFIG_CLASS(BasePathConfig):
     def portfolios_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="portfolios", date=date)
 
-    def results_save(self, df: pd.DataFrame, stem: str, *args, **kwargs) -> None:
+    def results_save(
+        self, df: Union[pd.DataFrame, pd.Series], stem: str, *args, **kwargs
+    ) -> None:
         path: Path = self.create_filename_with_date(
             stem=stem,
             type_="results",
@@ -361,14 +374,12 @@ class CONFIGURATION_CLASS:
     # Statistical configurations
     T_TEST_FACTORS: Union[List[str], Literal["all"]]
     T_TEST_SIGNIFICANCE_LEVEL: float
-    P_THRESHOLD : float
+    P_THRESHOLD: float
 
     def __post_init__(self):
         # Make sure the data is well structured
         if self.END_DATE_ANALYSIS < self.START_DATE_ANALYSIS:
-            raise ValueError(
-                "END_DATE_ANALYSIS must be after START_DATE_ANALYSIS"
-            )
+            raise ValueError("END_DATE_ANALYSIS must be after START_DATE_ANALYSIS")
 
         if self.INDUSTRY_CLASSIFICATION_METHOD not in {
             "Sic_level",

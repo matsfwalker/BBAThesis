@@ -10,7 +10,7 @@ from .constants import (
     INFLATION_SOURCE,
     ANALYSIS_START_DATE,
     ANALYSIS_END_DATE,
-    BREAK_DATE_PERIODS
+    BREAK_DATE_PERIODS,
 )
 from .paths import PATHCONFIG
 from .schema import CONFIGURATION_CLASS, PLOTTING_CONFIGURATIONS_CLASS
@@ -44,12 +44,16 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     # Data-cleaning configs #
     #########################
     THRESHOLD_MISSING_SHARESOUTSTANDING=0.5,  # Relative threshold of missing sharesoutstanding to drop a ticker
-    EXCHANGES_TO_REMOVE=["Toronto Stock Exchange", "TSX Venture Exchange",              # Canadian Exchanges
-                        "Other-OTC", "OTC Bulletin Board",                              # OTC-traded equities
-                        "Non-traded Company or Security", "Unlisted Evaluated Equity"   # Non-regulated exchanges
+    EXCHANGES_TO_REMOVE=[
+        "Toronto Stock Exchange",
+        "TSX Venture Exchange",  # Canadian Exchanges
+        "Other-OTC",
+        "OTC Bulletin Board",  # OTC-traded equities
+        "Non-traded Company or Security",
+        "Unlisted Evaluated Equity",  # Non-regulated exchanges
     ],
-    MIN_STOCK_PRICE=1.0,        # Eliminate Penny-stocks
-    MAX_MONTHLY_RETURN=10.0,    # Clip at 1000% return per month
+    MIN_STOCK_PRICE=1.0,  # Eliminate Penny-stocks
+    MAX_MONTHLY_RETURN=10.0,  # Clip at 1000% return per month
     #######################################
     # Industry Portfolio creation configs #
     #######################################
@@ -79,7 +83,7 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     ##############################
     T_TEST_FACTORS="all",  # Factors to perform t-tests on
     T_TEST_SIGNIFICANCE_LEVEL=2.0,  # Significance level for t-tests
-    P_THRESHOLD =0.05,  # p-value threshold for Jarque-Bera test to reject normality
+    P_THRESHOLD=0.05,  # p-value threshold for Jarque-Bera test to reject normality
 )
 
 

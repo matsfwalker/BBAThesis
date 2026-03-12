@@ -45,7 +45,9 @@ def download_processed_data(
     )
 
     # Bring the portfolio info to the format of a dataframe with the date as index and the columns as the different industries
-    portfolio_returns_monthly: pd.DataFrame = portfolio_info_monthly.pivot(columns="industry_name", values="return")
+    portfolio_returns_monthly: pd.DataFrame = portfolio_info_monthly.pivot(
+        columns="industry_name", values="return"
+    )
 
     if config.LOG_INFO:
         config.logger.info("Downloaded processed data successfully")
@@ -289,7 +291,9 @@ def gibbons_ross_shanken_test(
 
 
 def t_test_significance(
-    model_parameters: pd.DataFrame, config: CONFIGURATION_CLASS, t_stat_index: str = "Tstat"
+    model_parameters: pd.DataFrame,
+    config: CONFIGURATION_CLASS,
+    t_stat_index: str = "Tstat",
 ) -> pd.DataFrame:
     """
     Function to test the significance of model parameters using t-statistics.
@@ -452,16 +456,21 @@ def _date_ranges_windows(
         date_ranges["Entire Period"] = (sorted_dates[0], sorted_dates[-1])
 
     curr_date: dt.datetime = start_date
-    #last_start_date: Optional[dt.datetime] = None
-    
+    # last_start_date: Optional[dt.datetime] = None
+
     while curr_date < end_date:
-        window_end_date = min(curr_date + pd.DateOffset(months=window_size_months), end_date)
-        date_ranges[_date_range_to_str(curr_date, window_end_date)] = (curr_date, window_end_date)
+        window_end_date = min(
+            curr_date + pd.DateOffset(months=window_size_months), end_date
+        )
+        date_ranges[_date_range_to_str(curr_date, window_end_date)] = (
+            curr_date,
+            window_end_date,
+        )
         if window_end_date == end_date:
             break
         curr_date = window_end_date
 
-        return date_ranges
+    return date_ranges
 
 
 def construct_date_ranges(
@@ -644,7 +653,9 @@ def build_model(
 
     # Calculate the factors in different periods
     ff_factors_over_time: pd.DataFrame = factor_loadings_over_time(
-        factors=ff_factors_monthly, returns=portfolio_returns_monthly, config=PROJ_CONFIG
+        factors=ff_factors_monthly,
+        returns=portfolio_returns_monthly,
+        config=PROJ_CONFIG,
     )
 
     return factor_loadings_monthly, comparison_monthly_returns, ff_factors_over_time
@@ -675,18 +686,15 @@ def save_model(
     None"""
 
     config.paths.results_save(
-        df=comparison_monthly_returns,
-        stem=FILENAMES_CLASS.Comp_pred_actual_portfolio
+        df=comparison_monthly_returns, stem=FILENAMES_CLASS.Comp_pred_actual_portfolio
     )
 
     config.paths.results_save(
-        df=factor_loadings_monthly,
-        stem=FILENAMES_CLASS.Factor_loadings_monthly
+        df=factor_loadings_monthly, stem=FILENAMES_CLASS.Factor_loadings_monthly
     )
 
     config.paths.results_save(
-        df=ff_factors_over_time,
-        stem=FILENAMES_CLASS.Factor_loadings_differentperiods
+        df=ff_factors_over_time, stem=FILENAMES_CLASS.Factor_loadings_differentperiods
     )
 
     if config.LOG_INFO:

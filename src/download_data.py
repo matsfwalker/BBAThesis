@@ -7,11 +7,17 @@ import pandas as pd
 import pandas_datareader.data as web
 import wrds  # Wharton Research Data Services
 
-from configs import PROJ_CONFIG, CONFIGURATION_CLASS, FILENAMES_CLASS, DATAFRAME_CONTAINER
+from configs import (
+    PROJ_CONFIG,
+    CONFIGURATION_CLASS,
+    FILENAMES_CLASS,
+    DATAFRAME_CONTAINER,
+)
 
 ####################
 # Helper Functions #
 ####################
+
 
 def connect_wrds(config: CONFIGURATION_CLASS) -> wrds.Connection:
     """
@@ -39,22 +45,24 @@ def connect_wrds(config: CONFIGURATION_CLASS) -> wrds.Connection:
     return db
 
 
-def chunkify_dates(start_date: dt.datetime, end_date: dt.datetime)->Iterator[Tuple[dt.datetime, dt.datetime]]:
+def chunkify_dates(
+    start_date: dt.datetime, end_date: dt.datetime
+) -> Iterator[Tuple[str, str]]:
     """
     Function to create an iterator of the dates between start_date and end_date in chunks of 1 year.
     This reduces the time to run one query.
-    
+
     Parameters
     ----------
     start_date : dt.datetime
         Start date of the period to chunkify
     end_date : dt.datetime
         End date of the period to chunkify
-    
+
     Returns
     -------
-    Iterator[Tuple[dt.datetime, dt.datetime]]
-        Iterator of tuples containing the start and end date of each chunk
+    Iterator[Tuple[str, str]]
+        Iterator of tuples containing the start and end date of each chunk as strings
     """
     current = start_date
 
@@ -73,6 +81,7 @@ def chunkify_dates(start_date: dt.datetime, end_date: dt.datetime)->Iterator[Tup
 ###########
 # Factors #
 ###########
+
 
 # Sub-download functions
 def download_fama_french_factors(
@@ -126,6 +135,7 @@ def download_fama_french_factors(
 ##########################
 # FF Industry Portfolios #
 ##########################
+
 
 def import_ff_portfolios(config: CONFIGURATION_CLASS) -> pd.DataFrame:
     """
@@ -194,7 +204,8 @@ def import_ff_portfolios(config: CONFIGURATION_CLASS) -> pd.DataFrame:
         config.logger.info(
             f"Successfully imported Fama-French industry portfolios from {config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS}.txt"
         )
-        config.logger.debug(f"Fama-French industry portfolios sample:\n\n{result.sample(5)}\n"
+        config.logger.debug(
+            f"Fama-French industry portfolios sample:\n\n{result.sample(5)}\n"
         )
 
     return result
@@ -203,6 +214,7 @@ def import_ff_portfolios(config: CONFIGURATION_CLASS) -> pd.DataFrame:
 #############
 # Inflation #
 #############
+
 
 def download_monthly_inflation(config: CONFIGURATION_CLASS) -> pd.Series:
     """
@@ -245,7 +257,8 @@ def download_monthly_inflation(config: CONFIGURATION_CLASS) -> pd.Series:
         config.logger.info(
             f"Successfully downloaded inflation info from {inflation_lib} from {inflation_source} from {start_date} to {end_date}"
         )
-        config.logger.debug(f"Monthly inflation sample:\n\n{monthly_inflation.sample(5)}\n"
+        config.logger.debug(
+            f"Monthly inflation sample:\n\n{monthly_inflation.sample(5)}\n"
         )
 
     return monthly_inflation
@@ -254,6 +267,7 @@ def download_monthly_inflation(config: CONFIGURATION_CLASS) -> pd.Series:
 ##################
 # WRDS Downloads #
 ##################
+
 
 def download_monthly_market_info_wrds(
     con: wrds.Connection, config: CONFIGURATION_CLASS
@@ -332,8 +346,7 @@ def download_firm_info_wrds(
         config.logger.info(
             f"Successfully downloaded firm information for the observable universe ({len(result["gvkey"].unique())} firms) of stocks from WRDS"
         )
-        config.logger.debug(f"Firm info sample:\n\n{result.sample(5)}\n"
-        )
+        config.logger.debug(f"Firm info sample:\n\n{result.sample(5)}\n")
 
     return result
 
@@ -367,15 +380,15 @@ def download_sic_description_wrds(
         config.logger.info(
             f"Successfully downloaded firm information for the observable universe of stocks ({len(result["siccode"].unique())} firms) from WRDS"
         )
-        config.logger.debug(f"SIC codes sample:\n\n{result.sample(5)}\n"
-        )
+        config.logger.debug(f"SIC codes sample:\n\n{result.sample(5)}\n")
 
     return result
 
 
-################## 
+##################
 # Main functions #
 ##################
+
 
 def download_data(config: CONFIGURATION_CLASS) -> DATAFRAME_CONTAINER:
     """Donwloads the entire data necessary for the project.
@@ -455,32 +468,20 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION_CLASS) -> None:
     if ff5_monthly is None or ff5_yearly is None:
         raise ValueError("Fama-French factors data frames cannot be None")
 
+    config.paths.raw_save(df=ff5_monthly, stem=FILENAMES_CLASS.FF5_factors_monthly)
+
+    config.paths.raw_save(df=ff5_yearly, stem=FILENAMES_CLASS.FF5_factors_yearly)
+
     config.paths.raw_save(
-        df=ff5_monthly,
-        stem=FILENAMES_CLASS.FF5_factors_monthly
-    )
-    
-    config.paths.raw_save(
-        df=ff5_yearly,
-        stem=FILENAMES_CLASS.FF5_factors_yearly
+        df=data.monthly_stock_info, stem=FILENAMES_CLASS.Stock_prices, index=False
     )
 
     config.paths.raw_save(
-        df=data.monthly_stock_info,
-        stem=FILENAMES_CLASS.Stock_prices,
-        index=False
+        df=data.firm_info, stem=FILENAMES_CLASS.Firm_info, index=False
     )
 
     config.paths.raw_save(
-        df=data.firm_info,
-        stem=FILENAMES_CLASS.Firm_info,
-        index=False
-    )
-
-    config.paths.raw_save(
-        df=data.sic_info,
-        stem=FILENAMES_CLASS.Sic_description,
-        index=False
+        df=data.sic_info, stem=FILENAMES_CLASS.Sic_description, index=False
     )
 
     config.paths.raw_save(
@@ -491,7 +492,7 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION_CLASS) -> None:
     config.paths.raw_save(
         df=data.ff_industry_portfolios,
         stem=FILENAMES_CLASS.FF5_industry_portfolios,
-        index=False
+        index=False,
     )
 
     if config.LOG_INFO:

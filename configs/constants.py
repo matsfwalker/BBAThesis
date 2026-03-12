@@ -26,7 +26,5 @@ ANALYSIS_END_DATE: pd.Timestamp = pd.Timestamp.now()
 BREAK_DATE_PERIODS: list[pd.Timestamp] = [
     pd.Timestamp("2008-01-01"),
     pd.Timestamp("2015-01-01"),
-    pd.Timestamp("2020-01-01")
+    pd.Timestamp("2020-01-01"),
 ]
-
-

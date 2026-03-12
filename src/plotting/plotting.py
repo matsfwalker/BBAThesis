@@ -10,7 +10,9 @@ from .utils import as_float
 
 class PLOTTER:
     def __init__(
-        self, config: PLOTTING_CONFIGURATIONS_CLASS, figsize: Optional[Tuple[int, int]] = None
+        self,
+        config: PLOTTING_CONFIGURATIONS_CLASS,
+        figsize: Optional[Tuple[int, int]] = None,
     ) -> None:
         self.config: PLOTTING_CONFIGURATIONS_CLASS = config
 
