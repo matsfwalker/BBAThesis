@@ -175,7 +175,7 @@ def clean_factors(
 
     if config.LOG_INFO:
         config.logger.info("Cleaned the factor data")
-        config.logger.debug(f"Monthly factor data sample:\n{factors_monthly_raw_decimal.head(5)}")
+        config.logger.debug(f"Monthly factor data sample:\n\n{factors_monthly_raw_decimal.head(5)}\n")
 
     return factors_monthly_raw_decimal, factors_yearly_raw_decimal
 
@@ -232,7 +232,7 @@ def clean_ff_industry_portfolio(
         config.logger.info(
             "Finished cleaning Fama French industry portfolio data by aggregating to one row per industry and date"
         )
-        config.logger.debug(f"Cleaned Fama French industry portfolio data sample:\n{result.head(5)}")
+        config.logger.debug(f"Cleaned Fama French industry portfolio data sample:\n\n{result.head(5)}\n")
 
 
     return result
@@ -281,7 +281,7 @@ def calculate_cum_inflation_multiplier(
         config.logger.info(
             "Calculated the cumulative inflation multiplier from the MoM inflation"
         )
-        config.logger.debug(f"Cumulative inflation multiplier sample:\n{monthly_inflation_processed.head(5)}"
+        config.logger.debug(f"Cumulative inflation multiplier sample:\n\n{monthly_inflation_processed.head(5)}\n"
         )
 
     return monthly_inflation_processed
@@ -320,7 +320,7 @@ def intersect_stockprices_inflation(
         config.logger.info(
             "Intersected stock prices and inflation data on common dates index"
         )
-        config.logger.debug(f"Inflation data after intersection and filling missing values sample:\n{inflation_filled.head(5)}"
+        config.logger.debug(f"Inflation data after intersection and filling missing values sample:\n\n{inflation_filled.head(5)}\n"
         )
 
     return inflation_filled
@@ -452,7 +452,7 @@ def _clip_monthly_return(
         DataFrame containing the clipped returns.
         Note that the shape stays the same.
     """
-    monthly_stock_returns["return"] = monthly_stock_returns["return"].clip(-1, config.MAX_MONTHLY_RETURN)
+    monthly_stock_returns.loc[:,"return"] = monthly_stock_returns["return"].clip(-1, config.MAX_MONTHLY_RETURN)
     return monthly_stock_returns
 
 
@@ -530,7 +530,7 @@ def clean_stock_prices(
 
     if config.LOG_INFO:
         config.logger.info(f"Cleaned the stock prices. {monthly_stock_prices_raw['gvkey'].nunique()} -> {monthly_stock_prices_clipped_returns_cleaned['gvkey'].nunique()} firms")
-        config.logger.debug(f"Cleaned stock prices sample:\n{monthly_stock_prices_clipped_returns_cleaned.head(5)}")
+        config.logger.debug(f"Cleaned stock prices sample:\n\n{monthly_stock_prices_clipped_returns_cleaned.head(5)}\n")
 
     return monthly_stock_prices_clipped_returns_cleaned
 
@@ -601,19 +601,28 @@ def intersect_stockprices_monthlyfactors(
     monthly_stock_prices = monthly_stock_prices_cleaned.set_index("date", drop=True)
 
     # Shift the days of the returns to the first of the next month (FF standard)
-    monthly_stock_prices.index = monthly_stock_prices.index + pd.offsets.MonthBegin(1)
+    #monthly_stock_prices.index = monthly_stock_prices.index + pd.offsets.MonthBegin(0)
+    monthly_stock_prices.index = monthly_stock_prices.index.to_period("M").to_timestamp()
 
     # Align on common index
     common_idx: pd.Index = monthly_stock_prices.index.intersection(monthly_factors_processed.index)
     monthly_stock_prices_aligned = monthly_stock_prices.loc[common_idx]
     monthly_factors_aligned = monthly_factors_processed.loc[common_idx]
 
+    # Check on how much data was dropped
+    dates_num_ff_before: int = monthly_factors_processed.shape[0]
+    dates_num_ff_after: int = monthly_factors_aligned.shape[0]
+    date_num_stocks_before: int = monthly_stock_prices.index.nunique()
+    date_num_stocks_after: int = monthly_stock_prices.index.nunique()
+
 
     if config.LOG_INFO:
         config.logger.info(
-            "Intersected stock prices and monthly factors on common dates index"
+            "Intersected stock prices and monthly factors on common dates index."
         )
-        config.logger.debug(f"Stock prices after intersection and filling missing values sample:\n{monthly_stock_prices_aligned.head(5)}")
+        config.logger.debug(f"Dropped {dates_num_ff_before-dates_num_ff_after} dates for the FF-data.")
+        config.logger.debug(f"Dropped {date_num_stocks_before-date_num_stocks_after} dates for the market entries during alignment.")
+        config.logger.debug(f"Stock prices after intersection and filling missing values sample:\n\n{monthly_stock_prices_aligned.head(5)}\n")
 
     return monthly_stock_prices_aligned, monthly_factors_aligned
 
@@ -640,7 +649,7 @@ def clean_firm_info(firm_info_raw: pd.DataFrame, config: CONFIGURATION_CLASS) ->
 
     if config.LOG_INFO:
         config.logger.info("Cleaned the firm info")
-        config.logger.debug(f"Cleaned firm info sample:\n{firm_info_raw.head(5)}")
+        config.logger.debug(f"Cleaned firm info sample:\n\n{firm_info_raw.head(5)}\n")
 
     return firm_info_raw
 
@@ -675,7 +684,7 @@ def clean_sic_desc_raw(
         config.logger.info(
             "Cleaned the SIC description data by removing inactive codes and status column"
         )
-        config.logger.debug(f"Cleaned SIC description sample:\n +{sic_desc_raw.head(5)}"
+        config.logger.debug(f"Cleaned SIC description sample:\n\n{sic_desc_raw.head(5)}\n"
         )
 
     return sic_desc_raw

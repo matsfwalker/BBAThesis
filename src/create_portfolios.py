@@ -1025,9 +1025,6 @@ def create_portfolios_and_returns(
         config=config,
     )
 
-    print(stock_entries_to_keep.describe())
-    print(stock_entries_to_keep.nlargest(5,"return")[["market_cap", "close","companyname", "return", "Lagged_MarketCap"]])
-
     # Create the portfolios
     portfolios: pd.DataFrame = create_portfolios(
         sic_descr=data.sic_info,
