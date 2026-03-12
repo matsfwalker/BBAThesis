@@ -118,7 +118,7 @@ def download_fama_french_factors(
         config.logger.info(
             f"Successfully downloaded Fama-French factors from {lib_name} from {data_course}"
         )
-        config.logger.debug(f"Monthly factors sample:\n{monthly_factors.sample(5)}")
+        config.logger.debug(f"Monthly factors sample:\n\n{monthly_factors.sample(5)}\n")
 
     return monthly_factors, yearly_factors
 
@@ -194,7 +194,7 @@ def import_ff_portfolios(config: CONFIGURATION_CLASS) -> pd.DataFrame:
         config.logger.info(
             f"Successfully imported Fama-French industry portfolios from {config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS}.txt"
         )
-        config.logger.debug(f"Fama-French industry portfolios sample:\n{result.sample(5)}"
+        config.logger.debug(f"Fama-French industry portfolios sample:\n\n{result.sample(5)}\n"
         )
 
     return result
@@ -245,7 +245,7 @@ def download_monthly_inflation(config: CONFIGURATION_CLASS) -> pd.Series:
         config.logger.info(
             f"Successfully downloaded inflation info from {inflation_lib} from {inflation_source} from {start_date} to {end_date}"
         )
-        config.logger.debug(f"Monthly inflation sample:\n{monthly_inflation.sample(5)}"
+        config.logger.debug(f"Monthly inflation sample:\n\n{monthly_inflation.sample(5)}\n"
         )
 
     return monthly_inflation
@@ -301,9 +301,7 @@ def download_monthly_market_info_wrds(
         config.logger.info(
             f"Successfully downloaded monthly prices for the observable universe of stocks ({len(result['gvkey'].unique())} firms) from WRDS from {start_date} to {end_date}"
         )
-        config.logger.debug(f"Monthly prices sample:\n{result.sample(5)}")
-
-    print(result.describe())
+        config.logger.debug(f"Monthly prices sample:\n\n{result.sample(5)}\n")
 
     return result
 
@@ -334,7 +332,7 @@ def download_firm_info_wrds(
         config.logger.info(
             f"Successfully downloaded firm information for the observable universe ({len(result["gvkey"].unique())} firms) of stocks from WRDS"
         )
-        config.logger.debug(f"Firm info sample:\n{result.sample(5)}"
+        config.logger.debug(f"Firm info sample:\n\n{result.sample(5)}\n"
         )
 
     return result
@@ -369,7 +367,7 @@ def download_sic_description_wrds(
         config.logger.info(
             f"Successfully downloaded firm information for the observable universe of stocks ({len(result["siccode"].unique())} firms) from WRDS"
         )
-        config.logger.debug(f"SIC codes sample:\n{result.sample(5)}"
+        config.logger.debug(f"SIC codes sample:\n\n{result.sample(5)}\n"
         )
 
     return result
@@ -457,23 +455,43 @@ def save_data(data: DATAFRAME_CONTAINER, config: CONFIGURATION_CLASS) -> None:
     if ff5_monthly is None or ff5_yearly is None:
         raise ValueError("Fama-French factors data frames cannot be None")
 
-    ff5_monthly.to_csv(PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_factors_monthly))
-    ff5_yearly.to_csv(PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_factors_yearly))
-
-    data.monthly_stock_info.to_csv(
-        PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.Stock_prices), index=False
+    config.paths.raw_save(
+        df=ff5_monthly,
+        stem=FILENAMES_CLASS.FF5_factors_monthly
+    )
+    
+    config.paths.raw_save(
+        df=ff5_yearly,
+        stem=FILENAMES_CLASS.FF5_factors_yearly
     )
 
-    data.firm_info.to_csv(PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.Firm_info), index=False)
-
-    data.sic_info.to_csv(PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.Sic_description), index=False)
-
-    data.monthly_inflation.to_csv(
-        PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.Inflation_info_monthly), index=True
+    config.paths.raw_save(
+        df=data.monthly_stock_info,
+        stem=FILENAMES_CLASS.Stock_prices,
+        index=False
     )
 
-    data.ff_industry_portfolios.to_csv(
-        PROJ_CONFIG.paths.raw_out(FILENAMES_CLASS.FF5_industry_portfolios), index=False
+    config.paths.raw_save(
+        df=data.firm_info,
+        stem=FILENAMES_CLASS.Firm_info,
+        index=False
+    )
+
+    config.paths.raw_save(
+        df=data.sic_info,
+        stem=FILENAMES_CLASS.Sic_description,
+        index=False
+    )
+
+    config.paths.raw_save(
+        df=data.monthly_inflation,
+        stem=FILENAMES_CLASS.Inflation_info_monthly,
+    )
+
+    config.paths.raw_save(
+        df=data.ff_industry_portfolios,
+        stem=FILENAMES_CLASS.FF5_industry_portfolios,
+        index=False
     )
 
     if config.LOG_INFO:

@@ -452,7 +452,7 @@ def _date_ranges_windows(
         date_ranges["Entire Period"] = (sorted_dates[0], sorted_dates[-1])
 
     curr_date: dt.datetime = start_date
-    last_start_date: Optional[dt.datetime] = None
+    #last_start_date: Optional[dt.datetime] = None
     
     while curr_date < end_date:
         window_end_date = min(curr_date + pd.DateOffset(months=window_size_months), end_date)
@@ -674,16 +674,19 @@ def save_model(
     -------
     None"""
 
-    comparison_monthly_returns.to_csv(
-        config.paths.results_out(FILENAMES_CLASS.Comp_pred_actual_portfolio)
+    config.paths.results_save(
+        df=comparison_monthly_returns,
+        stem=FILENAMES_CLASS.Comp_pred_actual_portfolio
     )
 
-    factor_loadings_monthly.to_csv(
-        config.paths.results_out(FILENAMES_CLASS.Factor_loadings_monthly)
+    config.paths.results_save(
+        df=factor_loadings_monthly,
+        stem=FILENAMES_CLASS.Factor_loadings_monthly
     )
 
-    ff_factors_over_time.to_csv(
-        config.paths.results_out(FILENAMES_CLASS.Factor_loadings_differentperiods)
+    config.paths.results_save(
+        df=ff_factors_over_time,
+        stem=FILENAMES_CLASS.Factor_loadings_differentperiods
     )
 
     if config.LOG_INFO:

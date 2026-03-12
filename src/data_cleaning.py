@@ -105,30 +105,42 @@ def save_processed_data(
     if monthly_factors_processed is None or factors_yearly_processed is None:
         raise ValueError("Factors dataframes cannot be None")
 
-
-    monthly_factors_processed.to_csv(
-        config.paths.processed_out(FILENAMES_CLASS.FF5_factors_monthly)
-    )
-    factors_yearly_processed.to_csv(
-        config.paths.processed_out(FILENAMES_CLASS.FF5_factors_yearly)
+    config.paths.processed_save(
+        df=monthly_factors_processed,
+        stem=FILENAMES_CLASS.FF5_factors_monthly
     )
 
-    data_processed.monthly_stock_info.to_csv(config.paths.processed_out(FILENAMES_CLASS.Stock_prices))
-
-    data_processed.firm_info.to_csv(
-        config.paths.processed_out(FILENAMES_CLASS.Firm_info), index=False
+    config.paths.processed_save(
+        df=factors_yearly_processed,
+        stem=FILENAMES_CLASS.FF5_factors_yearly
     )
 
-    data_processed.sic_info.to_csv(
-        config.paths.processed_out(FILENAMES_CLASS.Sic_description), index=False
+    config.paths.processed_save(
+        df=data_processed.monthly_stock_info,
+        stem=FILENAMES_CLASS.Stock_prices
     )
 
-    data_processed.monthly_inflation.to_csv(
-        config.paths.processed_out(FILENAMES_CLASS.Inflation_info_monthly)
+    config.paths.processed_save(
+        df=data_processed.firm_info,
+        stem=FILENAMES_CLASS.Firm_info,
+        index=False
     )
 
-    data_processed.ff_industry_portfolios.to_csv(
-        config.paths.processed_out(FILENAMES_CLASS.FF5_industry_portfolios), index=False
+    config.paths.processed_save(
+        df=data_processed.sic_info,
+        stem=FILENAMES_CLASS.Sic_description,
+        index=False
+    )
+
+    config.paths.processed_save(
+        df=data_processed.monthly_inflation,
+        stem=FILENAMES_CLASS.Inflation_info_monthly,
+    )
+
+    config.paths.processed_save(
+        df=data_processed.ff_industry_portfolios,
+        stem=FILENAMES_CLASS.FF5_industry_portfolios,
+        index=False
     )
 
     if config.LOG_INFO:

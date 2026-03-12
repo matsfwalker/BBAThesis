@@ -139,6 +139,38 @@ class BasePathConfig:
         else:
             return self.get_file(stem=stem, type_=type_, date=date.strftime("%Y-%m-%d"))
 
+    @staticmethod
+    def save_df(
+        df: pd.DataFrame,
+        path: Path,
+        *args,
+        save_description: bool = True,
+        **kwargs
+    ) -> None:
+        """
+        Method to save a CSV file of the pd.DataFrame under the specified address.
+        By default, it also saves the description of each dataframe in another file 
+        called dir/description_{filename}.csv
+        
+        Parameters
+        ----------
+        df: pd.DataFrame
+            Dataframe to be saved
+        path: Path
+            Path of where to save the df
+        save_description: bool = True
+            Whether to also save the description.
+            Default is True
+            
+        Returns
+        -------
+        None"""
+
+        df.to_csv(path_or_buf= path, *args, **kwargs)
+
+        if save_description:
+            descr: pd.DataFrame = df.describe()
+            descr.to_csv(path_or_buf= path.parent / f"description_{path.stem}.csv")
 
 # Paths for the analysis (only access to model and portfolio data and results)
 @dataclass(frozen=True, slots=True)
@@ -161,22 +193,24 @@ class PATH_ANALYSIS_CLASS(BasePathConfig):
             case _:
                 raise ValueError(f"Type {type_} is not allowed")
 
-    def portfolios_out(self, stem: str) -> Path:
-        return self.create_filename_with_date(
+    def portfolios_save(self,df: pd.DataFrame, stem: str, *args, **kwargs) -> None:
+        path: Path =  self.create_filename_with_date(
             stem=stem,
             type_="portfolios",
             suffix=self.suffix,
         )
+        self.save_df(df,path, *args, **kwargs)
 
     def portfolios_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="portfolios", date=date)
 
-    def results_out(self, stem: str) -> Path:
-        return self.create_filename_with_date(
+    def results_save(self, df: pd.DataFrame, stem: str, *args, **kwargs) -> None:
+        path: Path = self.create_filename_with_date(
             stem=stem,
             type_="results",
             suffix=self.suffix,
         )
+        self.save_df(df,path, *args, **kwargs)
 
     def results_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="results", date=date)
@@ -215,42 +249,47 @@ class PATH_CONFIG_CLASS(BasePathConfig):
             case _:
                 raise ValueError(f"Type {type_} is not allowed")
 
-    def raw_out(self, stem: str) -> Path:
-        return self.create_filename_with_date(
+    def raw_save(self, df: pd.DataFrame, stem: str, *args, **kwargs) -> None:
+        path: Path = self.create_filename_with_date(
             stem=stem,
             type_="raw",
             suffix=self.suffix,
         )
+        self.save_df(df, path,*args, **kwargs)
 
     def raw_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="raw", date=date)
 
-    def processed_out(self, stem: str) -> Path:
-        return self.create_filename_with_date(
+    def processed_save(self, df: pd.DataFrame, stem: str, *args, **kwargs) -> None:
+        path: Path =  self.create_filename_with_date(
             stem=stem,
             type_="processed",
             suffix=self.suffix,
         )
 
+        self.save_df(df, path, *args, **kwargs)
+
     def processed_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="processed", date=date)
 
-    def portfolios_out(self, stem: str) -> Path:
-        return self.create_filename_with_date(
+    def portfolios_save(self, df:pd.DataFrame, stem: str, *args, **kwargs) -> None:
+        path: Path = self.create_filename_with_date(
             stem=stem,
             type_="portfolios",
             suffix=self.suffix,
         )
+        self.save_df(df, path, *args, **kwargs)
 
     def portfolios_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="portfolios", date=date)
 
-    def results_out(self, stem: str) -> Path:
-        return self.create_filename_with_date(
+    def results_save(self, df: pd.DataFrame, stem: str, *args, **kwargs) -> None:
+        path: Path = self.create_filename_with_date(
             stem=stem,
             type_="results",
             suffix=self.suffix,
         )
+        self.save_df(df, path, *args, **kwargs)
 
     def results_read(self, stem: str, date: Optional[dt.datetime] = None) -> Path:
         return self.resolve_path(stem=stem, type_="results", date=date)

@@ -92,8 +92,10 @@ def save_portfolio_returns_constitution(
             + "-" * 80
         )
 
-    # Save the results
-    portfolios.to_csv(config.paths.portfolios_out(FILENAMES_CLASS.Portfolio_info))
+    config.paths.portfolios_save(
+        df=portfolios,
+        stem=FILENAMES_CLASS.Portfolio_info
+    )
 
     if config.LOG_INFO:
         config.logger.info(
