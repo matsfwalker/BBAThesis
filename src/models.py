@@ -246,7 +246,7 @@ def compare_pred_actual(
         {
             "Pred_returns": pred_return_monthly,
             "Actual_returns": portfolio_returns_monthly,
-            "Residual_returns": pred_return_monthly - portfolio_returns_monthly,
+            "Residual_returns": portfolio_returns_monthly - pred_return_monthly,
         },
         axis=1,
     )
