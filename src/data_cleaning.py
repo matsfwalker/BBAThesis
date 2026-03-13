@@ -71,7 +71,7 @@ def download_raw_data(config: CONFIGURATION_CLASS) -> DATAFRAME_CONTAINER:
     )
 
     if config.LOG_INFO:
-        config.logger.info("Downloaded all raw data")
+        config.logger.info("Successfully downloaded all raw data")
 
     return DATAFRAME_CONTAINER(
         monthly_fama_french=factors_monthly_raw,
@@ -145,7 +145,7 @@ def save_processed_data(
     )
 
     if config.LOG_INFO:
-        config.logger.info("Finished saving processed files")
+        config.logger.info("Successfully saved processed files")
 
     return
 

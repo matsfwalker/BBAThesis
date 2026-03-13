@@ -1,6 +1,6 @@
 import datetime as dt 
 import pandas as pd
-from typing import List, Sequence, Dict, Tuple, Optional
+from typing import List, Sequence, Dict, Tuple, Optional, Iterator
 from configs import CONFIGURATION_CLASS
 
 
@@ -196,3 +196,37 @@ def construct_date_ranges(
         )
 
     return date_ranges
+
+
+def chunkify_dates(
+    start_date: dt.datetime, end_date: dt.datetime
+) -> Iterator[Tuple[str, str]]:
+    """
+    Function to create an iterator of the dates between start_date and end_date in chunks of 1 year.
+    This reduces the time to run one query.
+
+    Parameters
+    ----------
+    start_date : dt.datetime
+        Start date of the period to chunkify
+    end_date : dt.datetime
+        End date of the period to chunkify
+
+    Returns
+    -------
+    Iterator[Tuple[str, str]]
+        Iterator of tuples containing the start and end date of each chunk as strings
+    """
+    current = start_date
+
+    while current <= end_date:
+        next_year = dt.datetime(current.year + 1, 1, 1)
+        chunk_end = min(next_year - dt.timedelta(days=1), end_date)
+
+        yield (
+            current.strftime("%Y-%m-%d"),
+            chunk_end.strftime("%Y-%m-%d"),
+        )
+
+        current = chunk_end + dt.timedelta(days=1)
+

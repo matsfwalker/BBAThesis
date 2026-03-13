@@ -26,6 +26,10 @@ def download_processed_data(
         - ff_factors_yearly
         - portfolio_returns_monthly
     """
+    if config.logger:
+        config.logger.info(
+            "Starting to download portfolio data...\n" +"-"*80
+        )
     ff_factors_monthly: pd.DataFrame = pd.read_csv(
         config.paths.processed_read(FILENAMES_CLASS.FF5_factors_monthly),
         parse_dates=["date"],
@@ -50,7 +54,7 @@ def download_processed_data(
     )
 
     if config.LOG_INFO:
-        config.logger.info("Downloaded processed data successfully")
+        config.logger.info("Downloaded portfolio data successfully")
 
     return ff_factors_monthly, ff_factors_yearly, portfolio_returns_monthly
 
@@ -420,7 +424,7 @@ def factor_loadings_over_time(
 
     if config.LOG_INFO:
         config.logger.info(
-            "Computed factor loadings for different time periods successfully"
+            "Successfully computed factor loadings for subperiods"
         )
 
     return outcome
@@ -477,6 +481,11 @@ def build_model(
         factor_loadings_monthly, config=config
     )
 
+    if config.logger:
+        config.logger.info(
+            "Successfully analysed portfolios for the entire period"
+        )
+
     # Calculate the factors in different periods
     ff_factors_over_time: pd.DataFrame = factor_loadings_over_time(
         factors=ff_factors_monthly,
@@ -511,6 +520,10 @@ def save_model(
     -------
     None"""
 
+    if config.logger:
+        config.logger.info(
+            "Starting to save model results...\n" + "-"*80
+        )
     config.paths.results_save(
         df=comparison_monthly_returns, stem=FILENAMES_CLASS.Comp_pred_actual_portfolio
     )
@@ -523,7 +536,7 @@ def save_model(
         df=ff_factors_over_time, stem=FILENAMES_CLASS.Factor_loadings_differentperiods
     )
 
-    if config.LOG_INFO:
+    if config.logger:
         config.logger.info("Saved model results successfully")
 
 
