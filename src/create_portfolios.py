@@ -1,4 +1,5 @@
-from typing import List, Literal, cast, Union
+from typing import List, Literal, cast, Union, Dict, Tuple, Any
+import datetime as dt
 import numpy as np
 import pandas as pd
 from configs import (
@@ -7,6 +8,7 @@ from configs import (
     FILENAMES_CLASS,
     DATAFRAME_CONTAINER,
 )
+from utils import construct_date_ranges
 
 ####################
 # Download/Exports #
@@ -566,6 +568,80 @@ def drop_small_portfolios(
     return result.set_index(["date", "industry_name"])
 
 
+def _drop_sparse_portfolios_fullperiod(
+    portfolio_df: pd.DataFrame, config: CONFIGURATION_CLASS
+)->pd.DataFrame:
+    """
+    Function to drop the portfolios that have too few entries over the entire period.
+    This is used to make the regression more accurate and to reduce the standard error.
+
+        Parameters
+    ----------
+    portfolio_df : pd.DataFrame
+        DataFrame containing the portfolio information.
+    config : CONFIGURATION_CLASS
+        Configuration of the project.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing only the portfolios that appear in at least a minimum number of periods in the entire data
+    """
+    assert "industry_name" in portfolio_df.columns, "Missing column industry_name"
+
+    counts: pd.Series = portfolio_df["industry_name"].value_counts()
+    result = portfolio_df[
+        portfolio_df["industry_name"].isin(counts[counts >= config.MIN_OCCURANCES_PORTFOLIOS_ENTIRE].index)
+    ]
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Dropped portfolios with less than {config.MIN_OCCURANCES_PORTFOLIOS_ENTIRE} occurances over entire period.")
+
+    return result
+
+
+def _drop_sparse_portfolios_subperiods(
+    portfolio_df: pd.DataFrame, config: CONFIGURATION_CLASS
+)->pd.DataFrame:
+    """
+    Function to drop the portfolios that have too few entries in each subperiod.
+    This is used to make sure to have more entries than the amount of freedom needed in the regression + 1.
+
+    Parameters
+    ----------
+    portfolio_df : pd.DataFrame
+        DataFrame containing the portfolio information.
+    config : CONFIGURATION_CLASS
+        Configuration of the project.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing only the portfolios that appear in at least a minimum number of periods in each subperiod
+    """
+
+    date_ranges: Dict[str, Tuple[dt.datetime, dt.datetime]] = construct_date_ranges(
+        portfolio_df, config
+    )
+
+    for _, (start_date, end_date) in date_ranges.items():
+        subperiod: pd.DataFrame = portfolio_df.loc[
+                cast(Any, start_date) : cast(Any, end_date)
+            ]  # Cast for typechecker
+        counts: int = subperiod["industry_name"].value_counts()
+        portfolio_df = portfolio_df[
+            portfolio_df["industry_name"].isin(counts[counts >= config.MIN_OCCURANCES_PORTFOLIOS_SUB].index)
+        ]
+        
+
+    if config.LOG_INFO:
+        config.logger.info(
+            f"Dropped portfolios with less than {config.MIN_OCCURANCES_PORTFOLIOS_ENTIRE} occurances for each subperiod period.")
+
+    return portfolio_df
+
+
 def drop_sparse_portfolios(
     portfolio_df: pd.DataFrame, config: CONFIGURATION_CLASS
 ) -> pd.DataFrame:
@@ -586,26 +662,31 @@ def drop_sparse_portfolios(
         A DataFrame containing only the portfolios that appear in at least a minimum number of periods.
     """
 
-    min_count_occurances: int = config.MIN_OCCURANCES_PORTFOLIOS
-
-    portfolio_df = portfolio_df.reset_index()
+    portfolio_df = portfolio_df.reset_index(level=1)
 
     num_portfolios_start: int = portfolio_df["industry_name"].nunique()
 
-    counts: pd.Series = portfolio_df["industry_name"].value_counts()
-    result = portfolio_df[
-        portfolio_df["industry_name"].isin(counts[counts >= min_count_occurances].index)
-    ]
+    # Filter out the portfolios with too few entries overall
+    result1: pd.DataFrame = _drop_sparse_portfolios_fullperiod(
+        portfolio_df=portfolio_df,
+        config=config
+    )
+
+    # Filter out the portfolios with too few entries per subperiod
+    result = _drop_sparse_portfolios_subperiods(
+        portfolio_df=result1,
+        config=config
+    )
 
     num_portfolios_end: int = result["industry_name"].nunique()
 
     if config.LOG_INFO:
         config.logger.info(
-            f"Dropped non-significant portfolios with less than {min_count_occurances} occurances.\
-            \nNumber of portfolios dropped: {num_portfolios_start - num_portfolios_end} ({num_portfolios_start}->{num_portfolios_end})"
+            f"Dropped all non-significant portfolios. # Portfolios dropped: \
+{num_portfolios_start - num_portfolios_end} ({num_portfolios_start}->{num_portfolios_end})"
         )
 
-    return result.set_index(["date", "industry_name"])
+    return result.set_index("industry_name",append=True)
 
 
 def _calculate_weight_in_portfolio_marketcap(firm_subset: pd.DataFrame) -> pd.Series:

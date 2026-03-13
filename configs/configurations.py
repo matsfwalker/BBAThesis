@@ -65,7 +65,8 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     ##############################
     CUTOFF_FIRMS_PER_PORTFOLIO=10,  # Number of firms needed per portfolio
     MIN_MARKETCAP_FIRM=10_000_000.0,  # Minimum market cap needed for a firm to be considered
-    MIN_OCCURANCES_PORTFOLIOS=26,  # Minimum number of occurances of a portfolio in the data to be included in the analysis
+    MIN_OCCURANCES_PORTFOLIOS_ENTIRE=26,
+    MIN_OCCURANCES_PORTFOLIOS_SUB=7,  # Minimum number of occurances of a portfolio in the data to be included in the analysis
     DISCOUNT_MARKETCAP_FIRM_INFLATION=True,  # Discount the marketcap of firms. If this is used, then the minimum market cap is in real terms, not nominal and applied to each period.
     PORTFOLIO_AGGREGATION_METHOD="MarketCap",  # Method to aggregate firms into portfolios
     ########################

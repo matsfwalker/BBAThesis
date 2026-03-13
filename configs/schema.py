@@ -344,7 +344,8 @@ class CONFIGURATION_CLASS:
 
     # Portfolio creation configs
     CUTOFF_FIRMS_PER_PORTFOLIO: int
-    MIN_OCCURANCES_PORTFOLIOS: int
+    MIN_OCCURANCES_PORTFOLIOS_ENTIRE: int
+    MIN_OCCURANCES_PORTFOLIOS_SUB: int
     MIN_MARKETCAP_FIRM: float
     DISCOUNT_MARKETCAP_FIRM_INFLATION: bool
     INDUSTRY_CLASSIFICATION_METHOD: Literal["Sic_level", "Fama-French_portfolios"]
@@ -443,6 +444,11 @@ class CONFIGURATION_CLASS:
                 "Either MARKETCAP_PORTFOLIO_NUMBER_FIRMS or MARKETCAP_PORTFOLIO_PERCENTILE can be provided, but not both"
             )
 
+        if self.MIN_OCCURANCES_PORTFOLIOS_SUB < 6:
+            raise ValueError(
+                f"MIN_OCCURANCES_PORTFOLIOS_SUB({self.MIN_OCCURANCES_PORTFOLIOS_SUB}) is too low. Needed at least 6 (degrees of freedom + 1)"
+            )
+        
         if self.T_TEST_SIGNIFICANCE_LEVEL <= 0:
             raise ValueError("T_TEST_SIGNIFICANCE_LEVEL must be positive")
 
