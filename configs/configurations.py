@@ -26,7 +26,7 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     ###########
     LOG_INFO=True,
     logger=setup_logging(
-        name="Thesis", log_file=PATHCONFIG.LOGGING_DIR / "logging.log", level="INFO"
+        name="Thesis", log_file=PATHCONFIG.LOGGING_DIR / "logging.log", level="DEBUG"
     ),
     ###########
     # Sources #

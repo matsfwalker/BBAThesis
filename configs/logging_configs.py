@@ -3,6 +3,9 @@ import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Literal
+import numpy as np
+import warnings
+
 
 
 class DeltaFilter(logging.Filter):
@@ -48,6 +51,12 @@ def setup_logging(
     logger: logging.Logger = logging.getLogger(name)
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
     logger.propagate = False
+
+    # Set additional information
+    if level in ["DEBUG", "WARNING", "ERROR", "CRITICAL"]:
+        np.seterr(all="raise")
+        warnings.simplefilter("error")
+
 
     # Ensure directory exists
     log_file.parent.mkdir(parents=True, exist_ok=True)
