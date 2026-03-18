@@ -422,7 +422,7 @@ class CONFIGURATION_CLASS:
         if self.MIN_MARKETCAP_FIRM < 0:
             raise ValueError("MIN_MARKETCAP_FIRM must be non-negative")
 
-        if self.SIC_LEVEL not in {1, 2, 3, 4}:
+        if self. INDUSTRY_CLASSIFICATION_METHOD=="Sic_level" and self.SIC_LEVEL not in {1, 2, 3, 4}:
             raise ValueError("SIC_LEVEL must be one of {1, 2, 3, 4}")
 
         if self.PORTFOLIO_AGGREGATION_METHOD not in {"MarketCap", "Equal"}:

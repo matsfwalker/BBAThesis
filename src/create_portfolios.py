@@ -8,7 +8,7 @@ from configs import (
     FILENAMES_CLASS,
     DATAFRAME_CONTAINER,
 )
-from utils import construct_date_ranges
+from .utils import construct_date_ranges
 
 ####################
 # Download/Exports #

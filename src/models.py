@@ -2,7 +2,7 @@ import datetime as dt
 from typing import Any, Dict, List, Tuple, Union, cast
 import pandas as pd
 import statsmodels.api as sm
-from utils import construct_date_ranges
+from .utils import construct_date_ranges
 
 from configs import PROJ_CONFIG, CONFIGURATION_CLASS, FILENAMES_CLASS
 

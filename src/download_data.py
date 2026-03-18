@@ -13,7 +13,7 @@ from configs import (
     FILENAMES_CLASS,
     DATAFRAME_CONTAINER,
 )
-from utils import chunkify_dates
+from .utils import chunkify_dates
 
 ####################
 # Helper Functions #

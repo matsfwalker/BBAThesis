@@ -17,6 +17,17 @@ from .schema import CONFIGURATION_CLASS, PLOTTING_CONFIGURATIONS_CLASS
 from .logging_configs import setup_logging
 
 PROJ_CONFIG = CONFIGURATION_CLASS(
+    ################
+    # Main Configs #
+    ################
+    THRESHOLD_MISSING_SHARESOUTSTANDING=0.5,    # Relative threshold of missing sharesoutstanding to drop a ticker
+    MIN_STOCK_PRICE=1.0,                        # Eliminate Penny-stocks
+    MAX_MONTHLY_RETURN=10.0,                    # Clip at 1000% return per month
+    CUTOFF_FIRMS_PER_PORTFOLIO=10,              # Number of firms needed per portfolio
+    MIN_MARKETCAP_FIRM=10_000_000.0,            # Minimum market cap needed for a firm to be considered
+    MIN_OCCURANCES_PORTFOLIOS_ENTIRE=26,
+    MIN_OCCURANCES_PORTFOLIOS_SUB=7,            # Minimum number of occurances of a portfolio in the data to be included in the analysis
+    MARKETCAP_PORTFOLIO_PERCENTILE=0.5,         # Percentile threshold to define market cap portfolios (e.g., 0.4 means bottom 40% vs top 40%).
     #########
     # Paths #
     #########
@@ -26,7 +37,7 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     ###########
     LOG_INFO=True,
     logger=setup_logging(
-        name="Thesis", log_file=PATHCONFIG.LOGGING_DIR / "logging.log", level="DEBUG"
+        name="Thesis", log_file=PATHCONFIG.LOGGING_DIR / "logging.log", level="INFO"
     ),
     ###########
     # Sources #
@@ -43,7 +54,6 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     #########################
     # Data-cleaning configs #
     #########################
-    THRESHOLD_MISSING_SHARESOUTSTANDING=0.5,  # Relative threshold of missing sharesoutstanding to drop a ticker
     EXCHANGES_TO_REMOVE=[
         "Toronto Stock Exchange",
         "TSX Venture Exchange",  # Canadian Exchanges
@@ -52,21 +62,15 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
         "Non-traded Company or Security",
         "Unlisted Evaluated Equity",  # Non-regulated exchanges
     ],
-    MIN_STOCK_PRICE=1.0,  # Eliminate Penny-stocks
-    MAX_MONTHLY_RETURN=10.0,  # Clip at 1000% return per month
     #######################################
     # Industry Portfolio creation configs #
     #######################################
     INDUSTRY_CLASSIFICATION_METHOD="Fama-French_portfolios",
     FAMA_FRENCH_INDUSTRY_PORTFOLIOS="Siccodes48",
-    SIC_LEVEL=2,  # SIC code level to use for industry portfolios. The larger, the more granular.
+    SIC_LEVEL=None,
     ##############################
     # Other portfolio creation configs #
     ##############################
-    CUTOFF_FIRMS_PER_PORTFOLIO=10,  # Number of firms needed per portfolio
-    MIN_MARKETCAP_FIRM=10_000_000.0,  # Minimum market cap needed for a firm to be considered
-    MIN_OCCURANCES_PORTFOLIOS_ENTIRE=26,
-    MIN_OCCURANCES_PORTFOLIOS_SUB=7,  # Minimum number of occurances of a portfolio in the data to be included in the analysis
     DISCOUNT_MARKETCAP_FIRM_INFLATION=True,  # Discount the marketcap of firms. If this is used, then the minimum market cap is in real terms, not nominal and applied to each period.
     PORTFOLIO_AGGREGATION_METHOD="MarketCap",  # Method to aggregate firms into portfolios
     ########################
@@ -77,7 +81,6 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     INCLUDE_START_DATE_PERIOD=True,
     PERIOD_WINDOW_LENGTH_MONTHS=None,
     INCLUDE_WHOLE_PERIOD_MODEL=True,  # Whether to compute the model for the entire period in addition to subperiods
-    MARKETCAP_PORTFOLIO_PERCENTILE=0.2,  # Percentile threshold to define market cap portfolios (e.g., 0.4 means bottom 40% vs top 40%).
     MARKETCAP_PORTFOLIO_NUMBER_FIRMS=None,  # Number of firms to include in top and bottom market cap portfolios.
     ##############################
     # Statistical configurations #
