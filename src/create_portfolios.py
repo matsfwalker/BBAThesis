@@ -41,6 +41,7 @@ def download_processed_data(
         index_col="date",
     )
 
+
     firm_info: pd.DataFrame = pd.read_csv(
         config.paths.processed_read(FILENAMES_CLASS.Firm_info)
     )
@@ -318,7 +319,7 @@ def assign_industry(
 ######################
 
 
-def portfolio_information(
+def add_portfolio_information(
     portfolio_subset: pd.DataFrame,
     industry_name: str,
     MarketCapID: str,
@@ -363,6 +364,84 @@ def portfolio_information(
     )
 
 
+def _create_numfirms_subportfolio(
+    industry_subset:pd.DataFrame,
+    config: CONFIGURATION_CLASS
+)->Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Function to create the market cap based sub-portfolio information 
+    for a given industry portfolio subset based on the number of firms.
+    If no firms are within the benchmarks, then empty dataframes are returned.
+    
+    Parameters
+    ----------
+    industry_subset : pd.DataFrame
+        DataFrame containing the subset of the portfolio for a specific industry and date.
+    config : CONFIGURATION_CLASS
+        Configuration of the project.
+        
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame]
+        A tuple containing to data frames of firm entries (without info):
+        - Large cap portfolio
+        - Small cap portfolio
+    """
+    cutoff = min(config.MARKETCAP_PORTFOLIO_NUMBER_FIRMS, len(industry_subset) // 2)
+
+    if cutoff == 0:
+        return pd.DataFrame(), pd.DataFrame()
+
+    # order firms by marketcap
+    industry_subset_sorted: pd.DataFrame = industry_subset.sort_values(
+        "market_cap", ascending=False
+    )
+
+    top_firms = industry_subset_sorted.iloc[:cutoff].copy()
+    bottom_firms = industry_subset_sorted.iloc[-cutoff:].copy()
+
+    return top_firms, bottom_firms
+
+
+def _create_percentile_subportfolio(
+    industry_subset:pd.DataFrame,
+    config: CONFIGURATION_CLASS
+)-> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Function to create the market cap based sub-portfolio information 
+    for a given industry portfolio subset based on the percentile cutoff within the industry.
+    If no firms are within the benchmarks, then empty dataframes are returned.
+    
+    Parameters
+    ----------
+    industry_subset : pd.DataFrame
+        DataFrame containing the subset of the portfolio for a specific industry and date.
+    config : CONFIGURATION_CLASS
+        Configuration of the project.
+        
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame]
+        A tuple containing to data frames of firm entries (without info):
+        - Large cap portfolio
+        - Small cap portfolio
+    """
+    exchange: str = config.MARKETCAP_PORTFOLIO_EXCHANGE
+    if exchange == "all":
+        exchange_subset: pd.DataFrame = industry_subset
+    else:
+        exchange_subset = industry_subset[industry_subset["exchange"] == exchange]
+
+
+    # Get the large cap hurdle
+    small_cap_hurdle: float = exchange_subset["market_cap"].quantile(config.MARKETCAP_PORTFOLIO_PERCENTILE[0])
+    # Get the small cap hurdle
+    large_cap_hurdle: float = exchange_subset["market_cap"].quantile(config.MARKETCAP_PORTFOLIO_PERCENTILE[1])
+
+    return (industry_subset[industry_subset["market_cap"] >= large_cap_hurdle],
+            industry_subset[industry_subset["market_cap"] <= small_cap_hurdle])
+
+
 def marketcap_subportfolio_information(
     industry_subset: pd.DataFrame, industry_name: str, config: CONFIGURATION_CLASS
 ) -> List[pd.Series]:
@@ -383,34 +462,25 @@ def marketcap_subportfolio_information(
     List[pd.Series]
         A list of Series, each containing the information for a market cap based sub-portfolio (large cap and small cap) within the industry portfolio.
     """
-    num_firms_portfolio = config.MARKETCAP_PORTFOLIO_NUMBER_FIRMS
-    percentile_portfolio = config.MARKETCAP_PORTFOLIO_PERCENTILE
-
+    
     # determine cutoff
-    if percentile_portfolio is not None:
-        cutoff = int(len(industry_subset) * percentile_portfolio)
-    elif num_firms_portfolio is not None:
-        cutoff = min(num_firms_portfolio, len(industry_subset) // 2)
+    if config.MARKETCAP_PORTFOLIO_PERCENTILE is not None:
+        top_firms, bottom_firms = _create_percentile_subportfolio(industry_subset, config)
+    elif config.MARKETCAP_PORTFOLIO_NUMBER_FIRMS is not None:
+        top_firms, bottom_firms = _create_numfirms_subportfolio(industry_subset, config)
     else:
         raise ValueError(
             "Either percentile or number of firms for portfolios needs to be provided."
         )
-    if cutoff == 0:
+
+    if top_firms.empty:
         return []
-
-    # order firms by marketcap
-    industry_subset_sorted: pd.DataFrame = industry_subset.sort_values(
-        "market_cap", ascending=False
-    )
-
-    top_firms = industry_subset_sorted.iloc[:cutoff].copy()
-    bottom_firms = industry_subset_sorted.iloc[-cutoff:].copy()
-
+    
     return [
-        portfolio_information(
+        add_portfolio_information(
             top_firms, industry_name + " - Large Cap", "large_cap", config
         ),
-        portfolio_information(
+        add_portfolio_information(
             bottom_firms, industry_name + " - Small Cap", "small_cap", config
         ),
     ]
@@ -435,7 +505,7 @@ def calculate_portfolio_return(
         The calculated return of the portfolio.
     """
     # Calculate the weights of the stocks in the portfolio
-    portfolio_subset["Weight"] = _calculate_weight_in_portfolio(
+    portfolio_subset.loc[:,"Weight"] = _calculate_weight_in_portfolio(
         firm_subset=portfolio_subset, config=config
     )
 
@@ -514,7 +584,7 @@ def create_all_portfolios(
                 continue
 
             rows.append(
-                portfolio_information(
+                add_portfolio_information(
                     portfolio_subset=subset,
                     industry_name=industry,
                     MarketCapID="all",

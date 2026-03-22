@@ -21,3 +21,4 @@ logs/
 # Secrets / credentials
 .env
 keys.py
+.pgpass

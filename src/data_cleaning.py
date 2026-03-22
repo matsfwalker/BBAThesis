@@ -697,6 +697,7 @@ def _remove_non_significant_exchanges(
 ) -> pd.DataFrame:
     """
     Function to remove firms listed on stock exchanges that should not be included.
+    Keeps only the firms listed on the exchanges in config.EXCHANGES_TO_KEEP
 
     Parameters
     ----------
@@ -711,9 +712,18 @@ def _remove_non_significant_exchanges(
         New dataframe without the firms listed on non significant stock exchanges"""
 
     result: pd.DataFrame = stock_price[
-        ~stock_price["exchange"].isin(config.EXCHANGES_TO_REMOVE)
+        stock_price["exchange"].isin(config.EXCHANGES_TO_KEEP)
     ]
 
+    #REMOVED_EXCHANGES=[
+    #    "Toronto Stock Exchange",
+    #    "TSX Venture Exchange",  # Canadian Exchanges
+    #    "Other-OTC",
+    #    "OTC Bulletin Board",  # OTC-traded equities
+    #    "Non-traded Company or Security",
+    #    "Unlisted Evaluated Equity",  # Non-regulated exchanges
+    #],
+    
     if config.LOG_INFO:
         config.logger.info(
             f"Removed firms listed on non significant stock exchanges (e.g. Toronto Stock Exchange). Removed {stock_price['gvkey'].nunique() - result['gvkey'].nunique()} firms"

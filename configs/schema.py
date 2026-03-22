@@ -339,7 +339,7 @@ class CONFIGURATION_CLASS:
     # Data-cleaning configs
     THRESHOLD_MISSING_SHARESOUTSTANDING: float
     MIN_STOCK_PRICE: float
-    EXCHANGES_TO_REMOVE: List[str]
+    EXCHANGES_TO_KEEP: List[str]
     MAX_MONTHLY_RETURN: Optional[float]
 
     # Portfolio creation configs
@@ -369,7 +369,8 @@ class CONFIGURATION_CLASS:
     PERIOD_WINDOW_LENGTH_MONTHS: Optional[int]
     INCLUDE_WHOLE_PERIOD_MODEL: bool
 
-    MARKETCAP_PORTFOLIO_PERCENTILE: Optional[float]
+    MARKETCAP_PORTFOLIO_PERCENTILE: Optional[List[float]]
+    MARKETCAP_PORTFOLIO_EXCHANGE: Optional[Union["str", Literal["all"]]]
     MARKETCAP_PORTFOLIO_NUMBER_FIRMS: Optional[int]
 
     # Statistical configurations
@@ -437,13 +438,18 @@ class CONFIGURATION_CLASS:
                 "Either BREAK_DATE_PERIODS or PERIOD_WINDOW_LENGTH_MONTHS must be provided, but not both"
             )
 
-        if not (self.MARKETCAP_PORTFOLIO_NUMBER_FIRMS is None) ^ (
-            self.MARKETCAP_PORTFOLIO_PERCENTILE is None
-        ):
+        if self.MARKETCAP_PORTFOLIO_NUMBER_FIRMS is not None:
+            if self.MARKETCAP_PORTFOLIO_EXCHANGE is None:
+                raise ValueError("If the market cap percentile is defined, then the exchanges to be used must also be defined.")
+            elif (self.MARKETCAP_PORTFOLIO_EXCHANGE not in self.EXCHANGES_TO_KEEP) and (self.MARKETCAP_PORTFOLIO_EXCHANGE != "all"):
+                raise ValueError(
+                    f"{self.MARKETCAP_PORTFOLIO_EXCHANGE} is an invalid exchange. Must be either 'all' or in {self.EXCHANGES_TO_KEEP}."
+                )
+        elif (self.MARKETCAP_PORTFOLIO_PERCENTILE is None):
             raise ValueError(
                 "Either MARKETCAP_PORTFOLIO_NUMBER_FIRMS or MARKETCAP_PORTFOLIO_PERCENTILE can be provided, but not both"
             )
-
+        
         if self.MIN_OCCURANCES_PORTFOLIOS_SUB < 6:
             raise ValueError(
                 f"MIN_OCCURANCES_PORTFOLIOS_SUB({self.MIN_OCCURANCES_PORTFOLIOS_SUB}) is too low. Needed at least 6 (degrees of freedom + 1)"

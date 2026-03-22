@@ -25,9 +25,10 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     MAX_MONTHLY_RETURN=10.0,                    # Clip at 1000% return per month
     CUTOFF_FIRMS_PER_PORTFOLIO=10,              # Number of firms needed per portfolio
     MIN_MARKETCAP_FIRM=10_000_000.0,            # Minimum market cap needed for a firm to be considered
-    MIN_OCCURANCES_PORTFOLIOS_ENTIRE=26,
-    MIN_OCCURANCES_PORTFOLIOS_SUB=7,            # Minimum number of occurances of a portfolio in the data to be included in the analysis
-    MARKETCAP_PORTFOLIO_PERCENTILE=0.5,         # Percentile threshold to define market cap portfolios (e.g., 0.4 means bottom 40% vs top 40%).
+    MIN_OCCURANCES_PORTFOLIOS_ENTIRE=26,        # Number of occurances of a portfolio throughout the entire period
+    MIN_OCCURANCES_PORTFOLIOS_SUB=6,            # Minimum number of occurances of a portfolio in the data to be included in the analysis
+    MARKETCAP_PORTFOLIO_PERCENTILE=[0.5, 0.5],  # Percentile threshold to define market cap portfolios (e.g., 0.4 means bottom 40% vs top 40%).
+    MARKETCAP_PORTFOLIO_EXCHANGE="New York Stock Exchange",# Exchange from which to pull the market cap for the cutoff
     #########
     # Paths #
     #########
@@ -54,13 +55,12 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     #########################
     # Data-cleaning configs #
     #########################
-    EXCHANGES_TO_REMOVE=[
-        "Toronto Stock Exchange",
-        "TSX Venture Exchange",  # Canadian Exchanges
-        "Other-OTC",
-        "OTC Bulletin Board",  # OTC-traded equities
-        "Non-traded Company or Security",
-        "Unlisted Evaluated Equity",  # Non-regulated exchanges
+    EXCHANGES_TO_KEEP=[
+        'New York Stock Exchange',
+        'Nasdaq Stock Market',
+        'NYSE American',
+        'Cboe BZX Exchange',
+        'NYSEArca'
     ],
     #######################################
     # Industry Portfolio creation configs #
