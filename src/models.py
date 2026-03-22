@@ -27,9 +27,7 @@ def download_processed_data(
         - portfolio_returns_monthly
     """
     if config.logger:
-        config.logger.info(
-            "Starting to download portfolio data...\n" +"-"*80
-        )
+        config.logger.info("Starting to download portfolio data...\n" + "-" * 80)
     ff_factors_monthly: pd.DataFrame = pd.read_csv(
         config.paths.processed_read(FILENAMES_CLASS.FF5_factors_monthly),
         parse_dates=["date"],
@@ -149,7 +147,6 @@ def extract_factor_loadings(
                 continue
             excess_return = returns_aligned[ticker] - factors_aligned[rf_label]
             results[ticker] = lin_reg(X, excess_return)
-
 
         if config.LOG_INFO:
             config.logger.info(
@@ -388,9 +385,7 @@ def factor_loadings_over_time(
     """
 
     if config.logger:
-        config.logger.info(
-            "Starting Analysis for subperiods...\n" + "-"*80
-        )
+        config.logger.info("Starting Analysis for subperiods...\n" + "-" * 80)
 
     # Align the data on the index
     factors_aligned, returns_aligned = factors.align(returns, join="inner", axis=0)
@@ -423,9 +418,7 @@ def factor_loadings_over_time(
     outcome = outcome.swaplevel("date Range", "Ticker", axis=1)
 
     if config.LOG_INFO:
-        config.logger.info(
-            "Successfully computed factor loadings for subperiods"
-        )
+        config.logger.info("Successfully computed factor loadings for subperiods")
 
     return outcome
 
@@ -455,10 +448,8 @@ def build_model(
     )
 
     if config.logger:
-        config.logger.info(
-            "Starting analysis of the entire period...\n" + "-"*80
-        )
-    
+        config.logger.info("Starting analysis of the entire period...\n" + "-" * 80)
+
     # Extract the factors
     factor_loadings_monthly = extract_factor_loadings(
         factors=ff_factors_monthly, returns=portfolio_returns_monthly, config=config
@@ -482,9 +473,7 @@ def build_model(
     )
 
     if config.logger:
-        config.logger.info(
-            "Successfully analysed portfolios for the entire period"
-        )
+        config.logger.info("Successfully analysed portfolios for the entire period")
 
     # Calculate the factors in different periods
     ff_factors_over_time: pd.DataFrame = factor_loadings_over_time(
@@ -521,9 +510,7 @@ def save_model(
     None"""
 
     if config.logger:
-        config.logger.info(
-            "Starting to save model results...\n" + "-"*80
-        )
+        config.logger.info("Starting to save model results...\n" + "-" * 80)
     config.paths.results_save(
         df=comparison_monthly_returns, stem=FILENAMES_CLASS.Comp_pred_actual_portfolio
     )

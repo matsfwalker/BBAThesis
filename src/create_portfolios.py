@@ -41,7 +41,6 @@ def download_processed_data(
         index_col="date",
     )
 
-
     firm_info: pd.DataFrame = pd.read_csv(
         config.paths.processed_read(FILENAMES_CLASS.Firm_info)
     )
@@ -365,21 +364,20 @@ def add_portfolio_information(
 
 
 def _create_numfirms_subportfolio(
-    industry_subset:pd.DataFrame,
-    config: CONFIGURATION_CLASS
-)->Tuple[pd.DataFrame, pd.DataFrame]:
+    industry_subset: pd.DataFrame, config: CONFIGURATION_CLASS
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Function to create the market cap based sub-portfolio information 
+    Function to create the market cap based sub-portfolio information
     for a given industry portfolio subset based on the number of firms.
     If no firms are within the benchmarks, then empty dataframes are returned.
-    
+
     Parameters
     ----------
     industry_subset : pd.DataFrame
         DataFrame containing the subset of the portfolio for a specific industry and date.
     config : CONFIGURATION_CLASS
         Configuration of the project.
-        
+
     Returns
     -------
     Tuple[pd.DataFrame, pd.DataFrame]
@@ -387,6 +385,10 @@ def _create_numfirms_subportfolio(
         - Large cap portfolio
         - Small cap portfolio
     """
+    if config.MARKETCAP_PORTFOLIO_NUMBER_FIRMS is None:
+        raise ValueError(
+            "config.MARKETCAP_PORTFOLIO_NUMBER_FIRMS cant be None for _create_numfirms_subportfolio"
+        )
     cutoff = min(config.MARKETCAP_PORTFOLIO_NUMBER_FIRMS, len(industry_subset) // 2)
 
     if cutoff == 0:
@@ -404,21 +406,20 @@ def _create_numfirms_subportfolio(
 
 
 def _create_percentile_subportfolio(
-    industry_subset:pd.DataFrame,
-    config: CONFIGURATION_CLASS
-)-> Tuple[pd.DataFrame, pd.DataFrame]:
+    industry_subset: pd.DataFrame, config: CONFIGURATION_CLASS
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Function to create the market cap based sub-portfolio information 
+    Function to create the market cap based sub-portfolio information
     for a given industry portfolio subset based on the percentile cutoff within the industry.
     If no firms are within the benchmarks, then empty dataframes are returned.
-    
+
     Parameters
     ----------
     industry_subset : pd.DataFrame
         DataFrame containing the subset of the portfolio for a specific industry and date.
     config : CONFIGURATION_CLASS
         Configuration of the project.
-        
+
     Returns
     -------
     Tuple[pd.DataFrame, pd.DataFrame]
@@ -426,20 +427,30 @@ def _create_percentile_subportfolio(
         - Large cap portfolio
         - Small cap portfolio
     """
-    exchange: str = config.MARKETCAP_PORTFOLIO_EXCHANGE
+    if config.MARKETCAP_PORTFOLIO_PERCENTILE is None:
+        raise ValueError(
+            "config.MARKETCAP_PORTFOLIO_PERCENTILE cant be None for _create_percentile_subportfolio"
+        )
+
+    exchange: str = str(config.MARKETCAP_PORTFOLIO_EXCHANGE)
     if exchange == "all":
         exchange_subset: pd.DataFrame = industry_subset
     else:
         exchange_subset = industry_subset[industry_subset["exchange"] == exchange]
 
-
     # Get the large cap hurdle
-    small_cap_hurdle: float = exchange_subset["market_cap"].quantile(config.MARKETCAP_PORTFOLIO_PERCENTILE[0])
+    small_cap_hurdle: float = exchange_subset["market_cap"].quantile(
+        config.MARKETCAP_PORTFOLIO_PERCENTILE[0]
+    )
     # Get the small cap hurdle
-    large_cap_hurdle: float = exchange_subset["market_cap"].quantile(config.MARKETCAP_PORTFOLIO_PERCENTILE[1])
+    large_cap_hurdle: float = exchange_subset["market_cap"].quantile(
+        config.MARKETCAP_PORTFOLIO_PERCENTILE[1]
+    )
 
-    return (industry_subset[industry_subset["market_cap"] >= large_cap_hurdle],
-            industry_subset[industry_subset["market_cap"] <= small_cap_hurdle])
+    return (
+        industry_subset[industry_subset["market_cap"] >= large_cap_hurdle],
+        industry_subset[industry_subset["market_cap"] <= small_cap_hurdle],
+    )
 
 
 def marketcap_subportfolio_information(
@@ -462,10 +473,12 @@ def marketcap_subportfolio_information(
     List[pd.Series]
         A list of Series, each containing the information for a market cap based sub-portfolio (large cap and small cap) within the industry portfolio.
     """
-    
+
     # determine cutoff
     if config.MARKETCAP_PORTFOLIO_PERCENTILE is not None:
-        top_firms, bottom_firms = _create_percentile_subportfolio(industry_subset, config)
+        top_firms, bottom_firms = _create_percentile_subportfolio(
+            industry_subset, config
+        )
     elif config.MARKETCAP_PORTFOLIO_NUMBER_FIRMS is not None:
         top_firms, bottom_firms = _create_numfirms_subportfolio(industry_subset, config)
     else:
@@ -475,7 +488,7 @@ def marketcap_subportfolio_information(
 
     if top_firms.empty:
         return []
-    
+
     return [
         add_portfolio_information(
             top_firms, industry_name + " - Large Cap", "large_cap", config
@@ -505,7 +518,7 @@ def calculate_portfolio_return(
         The calculated return of the portfolio.
     """
     # Calculate the weights of the stocks in the portfolio
-    portfolio_subset.loc[:,"Weight"] = _calculate_weight_in_portfolio(
+    portfolio_subset.loc[:, "Weight"] = _calculate_weight_in_portfolio(
         firm_subset=portfolio_subset, config=config
     )
 
@@ -640,7 +653,7 @@ def drop_small_portfolios(
 
 def _drop_sparse_portfolios_fullperiod(
     portfolio_df: pd.DataFrame, config: CONFIGURATION_CLASS
-)->pd.DataFrame:
+) -> pd.DataFrame:
     """
     Function to drop the portfolios that have too few entries over the entire period.
     This is used to make the regression more accurate and to reduce the standard error.
@@ -661,19 +674,22 @@ def _drop_sparse_portfolios_fullperiod(
 
     counts: pd.Series = portfolio_df["industry_name"].value_counts()
     result = portfolio_df[
-        portfolio_df["industry_name"].isin(counts[counts >= config.MIN_OCCURANCES_PORTFOLIOS_ENTIRE].index)
+        portfolio_df["industry_name"].isin(
+            counts[counts >= config.MIN_OCCURANCES_PORTFOLIOS_ENTIRE].index
+        )
     ]
 
     if config.LOG_INFO:
         config.logger.info(
-            f"Dropped portfolios with less than {config.MIN_OCCURANCES_PORTFOLIOS_ENTIRE} occurances over entire period.")
+            f"Dropped portfolios with less than {config.MIN_OCCURANCES_PORTFOLIOS_ENTIRE} occurances over entire period."
+        )
 
     return result
 
 
 def _drop_sparse_portfolios_subperiods(
     portfolio_df: pd.DataFrame, config: CONFIGURATION_CLASS
-)->pd.DataFrame:
+) -> pd.DataFrame:
     """
     Function to drop the portfolios that have too few entries in each subperiod.
     This is used to make sure to have more entries than the amount of freedom needed in the regression + 1.
@@ -697,17 +713,19 @@ def _drop_sparse_portfolios_subperiods(
 
     for _, (start_date, end_date) in date_ranges.items():
         subperiod: pd.DataFrame = portfolio_df.loc[
-                cast(Any, start_date) : cast(Any, end_date)
-            ]  # Cast for typechecker
-        counts: int = subperiod["industry_name"].value_counts()
+            cast(Any, start_date) : cast(Any, end_date)
+        ]  # Cast for typechecker
+        counts: pd.Series = subperiod["industry_name"].value_counts()
         portfolio_df = portfolio_df[
-            portfolio_df["industry_name"].isin(counts[counts >= config.MIN_OCCURANCES_PORTFOLIOS_SUB].index)
+            portfolio_df["industry_name"].isin(
+                counts[counts >= config.MIN_OCCURANCES_PORTFOLIOS_SUB].index
+            )
         ]
-        
 
     if config.LOG_INFO:
         config.logger.info(
-            f"Dropped portfolios with less than {config.MIN_OCCURANCES_PORTFOLIOS_ENTIRE} occurances for each subperiod period.")
+            f"Dropped portfolios with less than {config.MIN_OCCURANCES_PORTFOLIOS_ENTIRE} occurances for each subperiod period."
+        )
 
     return portfolio_df
 
@@ -738,15 +756,11 @@ def drop_sparse_portfolios(
 
     # Filter out the portfolios with too few entries overall
     result1: pd.DataFrame = _drop_sparse_portfolios_fullperiod(
-        portfolio_df=portfolio_df,
-        config=config
+        portfolio_df=portfolio_df, config=config
     )
 
     # Filter out the portfolios with too few entries per subperiod
-    result = _drop_sparse_portfolios_subperiods(
-        portfolio_df=result1,
-        config=config
-    )
+    result = _drop_sparse_portfolios_subperiods(portfolio_df=result1, config=config)
 
     num_portfolios_end: int = result["industry_name"].nunique()
 
@@ -756,7 +770,7 @@ def drop_sparse_portfolios(
 {num_portfolios_start - num_portfolios_end} ({num_portfolios_start}->{num_portfolios_end})"
         )
 
-    return result.set_index("industry_name",append=True)
+    return result.set_index("industry_name", append=True)
 
 
 def _calculate_weight_in_portfolio_marketcap(firm_subset: pd.DataFrame) -> pd.Series:

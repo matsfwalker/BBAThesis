@@ -7,7 +7,6 @@ import numpy as np
 import warnings
 
 
-
 class DeltaFilter(logging.Filter):
     def __init__(self) -> None:
         super().__init__()
@@ -56,7 +55,6 @@ def setup_logging(
     if level in ["DEBUG", "WARNING", "ERROR", "CRITICAL"]:
         np.seterr(all="raise")
         warnings.simplefilter("error")
-
 
     # Ensure directory exists
     log_file.parent.mkdir(parents=True, exist_ok=True)

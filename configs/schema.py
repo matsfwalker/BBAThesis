@@ -423,7 +423,10 @@ class CONFIGURATION_CLASS:
         if self.MIN_MARKETCAP_FIRM < 0:
             raise ValueError("MIN_MARKETCAP_FIRM must be non-negative")
 
-        if self. INDUSTRY_CLASSIFICATION_METHOD=="Sic_level" and self.SIC_LEVEL not in {1, 2, 3, 4}:
+        if (
+            self.INDUSTRY_CLASSIFICATION_METHOD == "Sic_level"
+            and self.SIC_LEVEL not in {1, 2, 3, 4}
+        ):
             raise ValueError("SIC_LEVEL must be one of {1, 2, 3, 4}")
 
         if self.PORTFOLIO_AGGREGATION_METHOD not in {"MarketCap", "Equal"}:
@@ -440,21 +443,25 @@ class CONFIGURATION_CLASS:
 
         if self.MARKETCAP_PORTFOLIO_NUMBER_FIRMS is not None:
             if self.MARKETCAP_PORTFOLIO_EXCHANGE is None:
-                raise ValueError("If the market cap percentile is defined, then the exchanges to be used must also be defined.")
-            elif (self.MARKETCAP_PORTFOLIO_EXCHANGE not in self.EXCHANGES_TO_KEEP) and (self.MARKETCAP_PORTFOLIO_EXCHANGE != "all"):
+                raise ValueError(
+                    "If the market cap percentile is defined, then the exchanges to be used must also be defined."
+                )
+            elif (self.MARKETCAP_PORTFOLIO_EXCHANGE not in self.EXCHANGES_TO_KEEP) and (
+                self.MARKETCAP_PORTFOLIO_EXCHANGE != "all"
+            ):
                 raise ValueError(
                     f"{self.MARKETCAP_PORTFOLIO_EXCHANGE} is an invalid exchange. Must be either 'all' or in {self.EXCHANGES_TO_KEEP}."
                 )
-        elif (self.MARKETCAP_PORTFOLIO_PERCENTILE is None):
+        elif self.MARKETCAP_PORTFOLIO_PERCENTILE is None:
             raise ValueError(
                 "Either MARKETCAP_PORTFOLIO_NUMBER_FIRMS or MARKETCAP_PORTFOLIO_PERCENTILE can be provided, but not both"
             )
-        
+
         if self.MIN_OCCURANCES_PORTFOLIOS_SUB < 6:
             raise ValueError(
                 f"MIN_OCCURANCES_PORTFOLIOS_SUB({self.MIN_OCCURANCES_PORTFOLIOS_SUB}) is too low. Needed at least 6 (degrees of freedom + 1)"
             )
-        
+
         if self.T_TEST_SIGNIFICANCE_LEVEL <= 0:
             raise ValueError("T_TEST_SIGNIFICANCE_LEVEL must be positive")
 

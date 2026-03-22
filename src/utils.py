@@ -1,5 +1,6 @@
-import datetime as dt 
+import datetime as dt
 import pandas as pd
+import numpy as np
 from typing import List, Sequence, Dict, Tuple, Optional, Iterator
 from configs import CONFIGURATION_CLASS
 
@@ -25,7 +26,7 @@ def _date_range_to_str(start_date: dt.datetime, end_date: dt.datetime) -> str:
 
 
 def _date_ranges_break_dates(
-    all_dates: List[dt.datetime],
+    all_dates: List[pd.Timestamp],
     break_dates: Sequence[dt.datetime],
     include_end_date: bool = True,
     include_start_date: bool = True,
@@ -83,7 +84,7 @@ def _date_ranges_break_dates(
 
 
 def _date_ranges_windows(
-    all_dates: List[dt.datetime],
+    all_dates: List[pd.Timestamp],
     window_size_months: int,
     include_whole_period: bool = True,
 ) -> Dict[str, Tuple[dt.datetime, dt.datetime]]:
@@ -154,13 +155,16 @@ def construct_date_ranges(
     # Deal with different formats
     if pd.api.types.is_numeric_dtype(df.index) and "date" in df.columns:
         df = df.set_index("date", drop=True)
-    
+
     # Convert index to datetime
     converted = pd.to_datetime(df.index, errors="coerce")
-    if converted.notna().mean() > 0.9:   # 90% convertible
+    valid_ratio: float = float(np.mean(converted.notna().to_numpy()))
+    if valid_ratio > 0.9:  # 90% convertible
         df.index = converted
     else:
-        raise ValueError(f"Index of df should be of type pd.Timestamp, but is of type {type(df.index)}")
+        raise ValueError(
+            f"Index of df should be of type pd.Timestamp, but is of type {type(df.index)}"
+        )
 
     # Unpack the config
     break_dates: Optional[Sequence[dt.datetime]] = config.BREAK_DATE_PERIODS
@@ -229,4 +233,3 @@ def chunkify_dates(
         )
 
         current = chunk_end + dt.timedelta(days=1)
-

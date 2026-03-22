@@ -715,15 +715,15 @@ def _remove_non_significant_exchanges(
         stock_price["exchange"].isin(config.EXCHANGES_TO_KEEP)
     ]
 
-    #REMOVED_EXCHANGES=[
+    # REMOVED_EXCHANGES=[
     #    "Toronto Stock Exchange",
     #    "TSX Venture Exchange",  # Canadian Exchanges
     #    "Other-OTC",
     #    "OTC Bulletin Board",  # OTC-traded equities
     #    "Non-traded Company or Security",
     #    "Unlisted Evaluated Equity",  # Non-regulated exchanges
-    #],
-    
+    # ],
+
     if config.LOG_INFO:
         config.logger.info(
             f"Removed firms listed on non significant stock exchanges (e.g. Toronto Stock Exchange). Removed {stock_price['gvkey'].nunique() - result['gvkey'].nunique()} firms"

@@ -19,6 +19,7 @@ from .utils import chunkify_dates
 # Helper Functions #
 ####################
 
+
 def connect_wrds(config: CONFIGURATION_CLASS) -> wrds.Connection:
     """
     Function to connect to the WRDS database using the credentials specified in the configuration.
