@@ -1,6 +1,7 @@
 # Constants are those values that remain fixed and are essential to ensure the program runs.
 # They may not change based on different configurations or builds.
 import pandas as pd
+from typing import List
 
 # 1. Factor model constants
 # Source: Kenneth R. French Data Library (https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html)
@@ -21,9 +22,12 @@ START_PANDEMIC: pd.Timestamp = pd.Timestamp("2019-12-01")
 END_PANDEMIC: pd.Timestamp = pd.Timestamp("2021-06-01")
 
 # Information about the start of the period
-ANALYSIS_START_DATE: pd.Timestamp = pd.Timestamp("2008-01-01")
-ANALYSIS_END_DATE: pd.Timestamp = pd.Timestamp.now()
-BREAK_DATE_PERIODS: list[pd.Timestamp] = [
+ANALYSIS_START_DATE: pd.Timestamp = pd.Timestamp("2009-06-01")
+ANALYSIS_END_DATE: pd.Timestamp = pd.Timestamp("2026-02-01")
+
+# Break dates for the time-series comparison
+BREAK_DATE_PERIODS: List[pd.Timestamp] = [
     pd.Timestamp("2015-01-01"),
-    pd.Timestamp("2020-01-01"),
+    pd.Timestamp("2020-02-01"),
+    pd.Timestamp("2023-12-01"),
 ]

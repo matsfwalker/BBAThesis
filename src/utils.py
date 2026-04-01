@@ -158,7 +158,8 @@ def construct_date_ranges(
 
     # Convert index to datetime
     converted = pd.to_datetime(df.index, errors="coerce")
-    valid_ratio: float = float(np.mean(converted.notna().to_numpy()))
+    valid_ratio: float = float(np.mean(converted.notna()))
+    
     if valid_ratio > 0.9:  # 90% convertible
         df.index = converted
     else:
