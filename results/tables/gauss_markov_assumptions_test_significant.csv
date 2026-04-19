@@ -1,96 +1,96 @@
 ,Jarque-Bera,Time-series Homoscedasticity,Levene Test,Ljung-Box Test
-Aircraft,True,True,False,False
-Aircraft - Small Cap,False,False,False,False
-Almost Nothing,False,False,False,False
+Aircraft,True,True,True,False
+Aircraft - Small Cap,False,False,True,False
+Almost Nothing,False,False,True,False
 Apparel,True,False,False,False
 Apparel - Small Cap,False,False,False,False
-Automobiles and Trucks,True,False,False,True
-Automobiles and Trucks - Large Cap,True,False,False,True
+Automobiles and Trucks,True,False,True,True
+Automobiles and Trucks - Large Cap,True,False,True,True
 Automobiles and Trucks - Small Cap,True,True,False,False
-Banking,False,False,False,False
-Banking - Large Cap,False,False,False,False
-Banking - Small Cap,False,True,False,False
+Banking,False,False,True,False
+Banking - Large Cap,False,False,True,False
+Banking - Small Cap,False,True,True,False
 Business Services,False,False,False,False
 Business Services - Large Cap,False,False,False,False
-Business Services - Small Cap,True,False,False,True
+Business Services - Small Cap,True,True,True,True
 Chemicals,True,False,False,False
 Chemicals - Large Cap,True,False,False,False
 Chemicals - Small Cap,False,False,False,False
-Communication,True,False,False,False
+Communication,True,False,True,False
 Communication - Large Cap,True,False,False,False
-Communication - Small Cap,True,True,False,False
+Communication - Small Cap,True,True,True,False
 Computers,True,False,False,False
 Computers - Large Cap,False,False,False,False
 Computers - Small Cap,True,True,False,False
-Construction,False,True,False,False
-Construction - Large Cap,False,True,False,False
+Construction,False,True,True,False
+Construction - Large Cap,False,True,True,False
 Construction - Small Cap,False,False,False,False
-Construction Materials,False,False,False,False
-Construction Materials - Large Cap,True,True,False,False
-Construction Materials - Small Cap,False,False,False,False
+Construction Materials,True,False,True,False
+Construction Materials - Large Cap,True,True,True,False
+Construction Materials - Small Cap,False,False,True,False
 Consumer Goods,False,False,False,False
 Consumer Goods - Large Cap,False,False,False,False
-Consumer Goods - Small Cap,True,True,False,False
-Electrical Equipment,False,False,False,False
-Electrical Equipment - Small Cap,True,True,False,False
+Consumer Goods - Small Cap,True,True,True,False
+Electrical Equipment,False,True,True,False
+Electrical Equipment - Small Cap,True,True,True,False
 Electronic Equipment,False,False,False,False
 Electronic Equipment - Large Cap,False,False,False,False
-Electronic Equipment - Small Cap,True,True,False,False
-Entertainment,False,False,False,False
-Entertainment - Small Cap,True,True,False,True
+Electronic Equipment - Small Cap,True,True,True,False
+Entertainment,False,False,True,False
+Entertainment - Small Cap,True,True,True,True
 Food Products,False,False,False,False
 Food Products - Large Cap,False,False,False,False
 Food Products - Small Cap,False,False,False,False
-Healthcare,True,True,False,True
+Healthcare,True,True,True,True
 Healthcare - Small Cap,True,False,False,False
-Insurance,True,True,False,False
-Insurance - Large Cap,True,True,False,False
-Insurance - Small Cap,True,False,False,False
-Machinery,False,True,False,False
+Insurance,True,True,True,False
+Insurance - Large Cap,True,True,True,False
+Insurance - Small Cap,True,False,True,False
+Machinery,True,True,False,False
 Machinery - Large Cap,False,True,False,False
 Machinery - Small Cap,False,False,False,False
-Measuring and Control Equipment,False,True,False,False
-Measuring and Control Equipment - Large Cap,False,True,False,False
-Measuring and Control Equipment - Small Cap,True,True,False,False
-Medical Equipment,False,True,False,False
-Medical Equipment - Large Cap,False,True,False,False
-Medical Equipment - Small Cap,False,False,False,False
+Measuring and Control Equipment,False,True,True,False
+Measuring and Control Equipment - Large Cap,False,True,True,False
+Measuring and Control Equipment - Small Cap,True,True,True,False
+Medical Equipment,False,True,True,False
+Medical Equipment - Large Cap,False,True,True,False
+Medical Equipment - Small Cap,False,False,True,False
 Non-Metallic and Industrial Metal Mining,False,False,False,False
-Non-Metallic and Industrial Metal Mining - Small Cap,True,False,False,False
-Personal Services,True,True,False,False
-Personal Services - Large Cap,True,False,False,False
+Non-Metallic and Industrial Metal Mining - Small Cap,True,False,True,False
+Personal Services,True,False,False,False
+Personal Services - Large Cap,True,False,True,False
 Personal Services - Small Cap,False,False,False,False
-Petroleum and Natural Gas,True,True,False,False
-Petroleum and Natural Gas - Large Cap,True,True,False,False
-Petroleum and Natural Gas - Small Cap,True,False,False,False
+Petroleum and Natural Gas,True,True,True,False
+Petroleum and Natural Gas - Large Cap,True,True,True,False
+Petroleum and Natural Gas - Small Cap,True,False,True,False
 Pharmaceutical Products,True,False,False,True
-Pharmaceutical Products - Large Cap,True,False,False,False
-Pharmaceutical Products - Small Cap,False,False,False,False
+Pharmaceutical Products - Large Cap,True,False,True,False
+Pharmaceutical Products - Small Cap,False,False,False,True
 Precious Metals,True,True,False,False
 Precious Metals - Large Cap,True,False,False,False
 Precious Metals - Small Cap,True,True,False,False
 Real Estate,False,False,False,False
-Real Estate - Small Cap,True,False,False,False
-Recreation,False,False,False,False
+Real Estate - Small Cap,True,False,False,True
+Recreation,False,False,True,False
 Recreation - Small Cap,False,False,False,False
 "Restaurants, Hotels, Motels",False,False,False,False
 "Restaurants, Hotels, Motels - Large Cap",False,False,False,False
-"Restaurants, Hotels, Motels - Small Cap",True,False,False,False
-Retail,False,False,False,False
-Retail - Large Cap,False,False,False,False
-Retail - Small Cap,False,False,False,False
-Steel Works Etc,True,False,False,False
-Steel Works Etc - Large Cap,True,False,False,True
-Steel Works Etc - Small Cap,False,True,False,False
+"Restaurants, Hotels, Motels - Small Cap",True,False,True,False
+Retail,False,False,True,False
+Retail - Large Cap,False,False,True,False
+Retail - Small Cap,False,False,True,False
+Steel Works Etc,True,False,True,False
+Steel Works Etc - Large Cap,True,False,True,False
+Steel Works Etc - Small Cap,False,True,True,False
 Trading,False,False,False,True
 Trading - Large Cap,False,False,False,True
 Trading - Small Cap,True,False,False,False
-Transportation,False,True,False,False
-Transportation - Large Cap,False,True,False,False
-Transportation - Small Cap,True,False,False,False
+Transportation,False,True,True,False
+Transportation - Large Cap,False,True,True,False
+Transportation - Small Cap,True,False,True,False
 Utilities,False,False,False,False
 Utilities - Large Cap,False,False,False,False
 Utilities - Small Cap,False,False,False,False
-Wholesale,True,True,False,False
-Wholesale - Large Cap,True,True,False,False
+Wholesale,False,True,True,False
+Wholesale - Large Cap,False,True,True,False
 Wholesale - Small Cap,False,False,False,False

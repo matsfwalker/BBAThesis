@@ -37,7 +37,7 @@ PATHCONFIG = PATH_CONFIG_CLASS(
 # Enum for the analysis pathnames
 class FILENAMES_ANALYSIS_CLASS(StrEnum):
     # Portfolio Info
-    Portfolio_info = "portfolio_returns_monthly"
+    Portfolio_info = "portfolio_information_monthly"
     Portfolio_construction_details = "portfolio_construction_details"
 
     # Model outcomes
@@ -65,7 +65,8 @@ class FILENAMES_CLASS(StrEnum):
     Sic_description = "sic_description"
 
     # Portfolio Info
-    Portfolio_info = "portfolio_returns_monthly"
+    Portfolio_info = "portfolio_information_monthly"
+    Portfolio_construction_details = "portfolio_construction_details"
 
     # Inflation information
     Inflation_info_monthly = "monthly_inflation_info"

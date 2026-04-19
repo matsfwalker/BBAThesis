@@ -2,9 +2,7 @@ import datetime as dt
 import warnings
 from typing import Any, Dict, Tuple, Union, cast, Optional, List
 import re
-
 import pandas as pd
-import pandas_datareader.data as web
 import wrds  # Wharton Research Data Services
 
 from configs import (
@@ -74,11 +72,18 @@ def download_fama_french_factors(
     start_date: dt.datetime = config.START_DATE_ANALYSIS
     end_date: dt.datetime = config.END_DATE_ANALYSIS
 
+    import pandas_datareader.data as web
+
     # Filter out the internal deprecation warning of web.DataReader
     warnings.filterwarnings(
         "ignore",
         message="The argument 'date_parser' is deprecated",
         category=FutureWarning,
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message="The argument 'date_parser' is deprecated",
+        category=DeprecationWarning,
     )
 
     factors: Dict[Union[int, str], Any] = web.DataReader(
@@ -206,7 +211,8 @@ def download_monthly_inflation(config: CONFIGURATION_CLASS) -> pd.Series:
 
     inflation_lib: str = config.INFLATION_LIB
     inflation_source: str = config.INFLATION_SOURCE
-
+    
+    import pandas_datareader.data as web
     cpi: Any = web.DataReader(
         name=inflation_source, data_source=inflation_lib, start=start_date, end=end_date
     )
@@ -257,7 +263,7 @@ def download_monthly_market_info_wrds(
 
     # Unpack the config
     start_date: dt.datetime = config.START_DATE_ANALYSIS - dt.timedelta(days=31)
-    end_date: dt.datetime = config.END_DATE_ANALYSIS - dt.timedelta(days=31)
+    end_date: dt.datetime = config.END_DATE_ANALYSIS #- dt.timedelta(days=31)
 
     # Get the SQL query
     sql_query_monthly_price: str = config.paths.sql_query(

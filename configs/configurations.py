@@ -22,7 +22,7 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     ################
     THRESHOLD_MISSING_SHARESOUTSTANDING=0.5,  # Relative threshold of missing sharesoutstanding to drop a ticker
     MIN_STOCK_PRICE=1.0,  # Eliminate Penny-stocks
-    MAX_MONTHLY_RETURN=10.0,  # Clip at 1000% return per month
+    MAX_MONTHLY_RETURN=1.0,  # Clip at 1000% return per month
     CUTOFF_FIRMS_PER_PORTFOLIO=10,  # Number of firms needed per portfolio
     MIN_MARKETCAP_FIRM=10_000_000.0,  # Minimum market cap needed for a firm to be considered
     MIN_OCCURANCES_PORTFOLIOS_ENTIRE=26,  # Number of occurances of a portfolio throughout the entire period
@@ -41,7 +41,7 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     ###########
     LOG_INFO=True,
     logger=setup_logging(
-        name="Thesis", log_file=PATHCONFIG.LOGGING_DIR / "logging.log", level="INFO"
+        name="Thesis", log_file=PATHCONFIG.LOGGING_DIR / "logging.log", level="DEBUG"
     ),
     ###########
     # Sources #

@@ -1,10 +1,10 @@
 ,Levene Test
-count,0.000000
-mean,nan
-std,nan
-min,nan
-25%,nan
-50%,nan
-75%,nan
-max,nan
-Reject H_0  (p <= 0.05),False
+count,95.000000
+mean,0.190829
+std,0.278419
+min,0.000000
+25%,0.005902
+50%,0.043952
+75%,0.270098
+max,0.968071
+Reject H_0  (p <= 0.05),True

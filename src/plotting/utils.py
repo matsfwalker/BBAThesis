@@ -41,7 +41,6 @@ def import_plotting_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         ANALYSIS_PATHS.results_read(FILENAMES_CLASS.Factor_loadings_differentperiods),
         header=[0, 1],
         index_col=[0, 1],
-        parse_dates=[0],
     )
 
     return monthly_factor_loadings, monthly_predicted_returns, factor_loadings_overtime
