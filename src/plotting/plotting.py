@@ -6,7 +6,7 @@ from typing import List, Union, Literal, Tuple, Optional
 from configs import PLOTTING_CONFIGURATIONS_CLASS
 from .style import set_plot_style, get_palette, colour_cycle, colour_map
 from .utils import as_float
-
+import seaborn as sns
 
 class PLOTTER:
     def __init__(
@@ -541,4 +541,31 @@ class PLOTTER:
         fig.suptitle(
             f"Factor loadings over time {name}", fontsize=self.fontsize_header, y=1.05
         )
+        plt.show()
+
+    def plot_histogram_changes_over_time(self, df: pd.DataFrame, beta: str)-> None:
+        """
+        Function to plot the changes of the betas over time as a histogram.
+        
+        Parameters
+        ----------
+        df : pd.DataFrame
+            Dataframe containing the changes in betas over time.
+        beta : str
+            The beta to plot the histogram for.
+
+        Returns
+        -------
+        None
+        """
+
+        # Filter the data for the specific beta
+        beta_data = df.loc[beta,:]
+
+        # Create the histogram plot
+        plt.figure(figsize=self.figsize)
+        sns.histplot(beta_data.values.flatten(), bins=30, kde=True)
+        plt.title(f"Period-wise Changes in {beta}")
+        plt.xlabel(f"Change in {beta}")
+        plt.ylabel("Frequency")
         plt.show()
