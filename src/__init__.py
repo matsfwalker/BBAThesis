@@ -3,6 +3,7 @@ from .create_portfolios import create_save_portfolios
 from .data_cleaning import clean_save_data
 from .download_data import download_save_raw_data
 from .models import build_save_model, construct_date_ranges
+from .utils import import_analysis_data
 
 __all__ = [
     "download_save_raw_data",  # To download and save the raw data
@@ -10,4 +11,5 @@ __all__ = [
     "create_save_portfolios",  # To create the portfolios
     "build_save_model",  # To build the model
     "construct_date_ranges",  # To help construct the date ranges for the portfolios
+    "import_analysis_data", 
 ]

@@ -2,8 +2,7 @@ import datetime as dt
 import pandas as pd
 import numpy as np
 from typing import List, Sequence, Dict, Tuple, Optional, Iterator
-from configs import CONFIGURATION_CLASS
-
+from configs import CONFIGURATION_CLASS, ANALYSIS_PATHS, FILENAMES_CLASS
 
 def _date_range_to_str(start_date: dt.datetime, end_date: dt.datetime) -> str:
     """
@@ -234,3 +233,40 @@ def chunkify_dates(
         )
 
         current = chunk_end + dt.timedelta(days=1)
+
+
+def import_analysis_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Function to return the necessary data for plotting
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
+        The dataframes necessary to plot the findings
+        - monthly_factor_loadings
+        - monthly_predicted_returns
+        - factor_loadings_overtime"""
+    # Import files and set index
+    monthly_factor_loadings: pd.DataFrame = pd.read_csv(
+        ANALYSIS_PATHS.results_read(FILENAMES_CLASS.Factor_loadings_monthly),
+        index_col=[0, 1],
+    )
+
+    monthly_predicted_returns: pd.DataFrame = pd.read_csv(
+        ANALYSIS_PATHS.results_read(FILENAMES_CLASS.Comp_pred_actual_portfolio),
+        header=[0, 1],
+        index_col=0,
+        parse_dates=True,
+    )
+
+    factor_loadings_overtime: pd.DataFrame = pd.read_csv(
+        ANALYSIS_PATHS.results_read(FILENAMES_CLASS.Factor_loadings_differentperiods),
+        header=[0, 1],
+        index_col=[0, 1],
+    )
+
+    return monthly_factor_loadings, monthly_predicted_returns, factor_loadings_overtime
