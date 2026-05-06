@@ -4,6 +4,7 @@ import numpy as np
 from typing import List, Sequence, Dict, Tuple, Optional, Iterator
 from configs import CONFIGURATION_CLASS, ANALYSIS_PATHS, FILENAMES_CLASS
 
+
 def _date_range_to_str(start_date: dt.datetime, end_date: dt.datetime) -> str:
     """
     Function to convert a date range to a string representation.
@@ -158,7 +159,7 @@ def construct_date_ranges(
     # Convert index to datetime
     converted = pd.to_datetime(df.index, errors="coerce")
     valid_ratio: float = float(np.mean(converted.notna()))
-    
+
     if valid_ratio > 0.9:  # 90% convertible
         df.index = converted
     else:

@@ -8,6 +8,7 @@ from .style import set_plot_style, get_palette, colour_cycle, colour_map
 from .utils import as_float
 import seaborn as sns
 
+
 class PLOTTER:
     def __init__(
         self,
@@ -543,12 +544,16 @@ class PLOTTER:
         )
         plt.show()
 
-    def plot_histogram_changes_over_time(self, df: pd.DataFrame, beta: str,
-                                         x_start: Optional[Any] = None,
-                                         x_end: Optional[Any] = None)-> None:
+    def plot_histogram_changes_over_time(
+        self,
+        df: pd.DataFrame,
+        beta: str,
+        x_start: Optional[Any] = None,
+        x_end: Optional[Any] = None,
+    ) -> None:
         """
         Function to plot the changes of the betas over time as a histogram.
-        
+
         Parameters
         ----------
         df : pd.DataFrame
@@ -569,7 +574,7 @@ class PLOTTER:
         """
 
         # Filter the data for the specific beta
-        beta_data = df.loc[beta,:]
+        beta_data = df.loc[beta, :]
 
         # Create the histogram plot
         plt.figure(figsize=self.figsize)

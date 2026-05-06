@@ -11,5 +11,5 @@ __all__ = [
     "create_save_portfolios",  # To create the portfolios
     "build_save_model",  # To build the model
     "construct_date_ranges",  # To help construct the date ranges for the portfolios
-    "import_analysis_data", 
+    "import_analysis_data",
 ]

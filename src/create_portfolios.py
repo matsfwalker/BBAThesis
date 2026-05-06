@@ -900,8 +900,9 @@ def create_portfolios(
     industry_marketcap_portfolios_filtered = drop_sparse_portfolios(
         portfolio_df=industry_marketcap_portfolios_filtered, config=config
     )
-    
+
     return industry_marketcap_portfolios_filtered
+
 
 # Main pipeline function
 def create_portfolios_and_returns(
