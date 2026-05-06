@@ -2,7 +2,7 @@ import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import List, Union, Literal, Tuple, Optional
+from typing import List, Union, Literal, Tuple, Optional, Any
 from configs import PLOTTING_CONFIGURATIONS_CLASS
 from .style import set_plot_style, get_palette, colour_cycle, colour_map
 from .utils import as_float
@@ -543,7 +543,9 @@ class PLOTTER:
         )
         plt.show()
 
-    def plot_histogram_changes_over_time(self, df: pd.DataFrame, beta: str)-> None:
+    def plot_histogram_changes_over_time(self, df: pd.DataFrame, beta: str,
+                                         x_start: Optional[Any] = None,
+                                         x_end: Optional[Any] = None)-> None:
         """
         Function to plot the changes of the betas over time as a histogram.
         
@@ -553,7 +555,14 @@ class PLOTTER:
             Dataframe containing the changes in betas over time.
         beta : str
             The beta to plot the histogram for.
-
+        x_start : Optional[Any]
+            The leftmost x-axis value.
+            Must match the axis style (numeric, date, etc.)
+            Default is None, reverting to sns default.
+        x_end : Optional[Any]
+            The rightmost x-axis value.
+            Must match the axis style (numeric, date, etc.)
+            Default is None, reverting to sns default.
         Returns
         -------
         None
@@ -565,6 +574,7 @@ class PLOTTER:
         # Create the histogram plot
         plt.figure(figsize=self.figsize)
         sns.histplot(beta_data.values.flatten(), bins=30, kde=True)
+        plt.xlim(x_start, x_end)  # set your desired range here
         plt.title(f"Period-wise Changes in {beta}")
         plt.xlabel(f"Change in {beta}")
         plt.ylabel("Frequency")
