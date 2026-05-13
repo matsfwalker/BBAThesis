@@ -3,7 +3,7 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import List, Union, Literal, Tuple, Optional, Any
-from configs import PLOTTING_CONFIGURATIONS_CLASS
+from configs import PLOTTING_CONFIGURATIONS_CLASS, ANALYSIS_PATHS
 from .style import set_plot_style, get_palette, colour_cycle, colour_map
 from .utils import as_float
 import seaborn as sns
@@ -16,6 +16,7 @@ class PLOTTER:
         figsize: Optional[Tuple[int, int]] = None,
     ) -> None:
         self.config: PLOTTING_CONFIGURATIONS_CLASS = config
+        self.plot_folder: str = ANALYSIS_PATHS.RESULT_IMAGES_DIR
 
         self.figsize = figsize if figsize is not None else (10, 6)
         self.fontsize_header: float = 18.0
@@ -550,6 +551,7 @@ class PLOTTER:
         beta: str,
         x_start: Optional[Any] = None,
         x_end: Optional[Any] = None,
+        save: bool = False,
     ) -> None:
         """
         Function to plot the changes of the betas over time as a histogram.
@@ -568,6 +570,10 @@ class PLOTTER:
             The rightmost x-axis value.
             Must match the axis style (numeric, date, etc.)
             Default is None, reverting to sns default.
+        save : bool
+            Whether to save the plot as a file.
+            If True, saves the plot to the location specified in self.config.PLOT_SAVE_PATH with a filename based on the beta.
+            Default is False (does not save the plot).
         Returns
         -------
         None
@@ -583,4 +589,9 @@ class PLOTTER:
         plt.title(f"Period-wise Changes in {beta}")
         plt.xlabel(f"Change in {beta}")
         plt.ylabel("Frequency")
+        
+        if save:
+            plt.savefig(self.plot_folder / f"histogram_changes_{beta}.png")
+
         plt.show()
+

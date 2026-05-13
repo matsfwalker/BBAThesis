@@ -27,11 +27,9 @@ PROJ_CONFIG = CONFIGURATION_CLASS(
     MIN_MARKETCAP_FIRM=10_000_000.0,  # Minimum market cap needed for a firm to be considered
     MIN_OCCURANCES_PORTFOLIOS_ENTIRE=26,  # Number of occurances of a portfolio throughout the entire period
     MIN_OCCURANCES_PORTFOLIOS_SUB=6,  # Minimum number of occurances of a portfolio in the data to be included in the analysis
-    MARKETCAP_PORTFOLIO_PERCENTILE=[
-        0.5,
-        0.5,
-    ],  # Percentile threshold to define market cap portfolios (e.g., 0.4 means bottom 40% vs top 40%).
-    MARKETCAP_PORTFOLIO_EXCHANGE="New York Stock Exchange",  # Exchange from which to pull the market cap for the cutoff
+    CREATE_MARKETCAP_PORTFOLIOS=False, # Whether to create market cap portfolios in addition to the industry portfolios
+    MARKETCAP_PORTFOLIO_PERCENTILE=None,
+    MARKETCAP_PORTFOLIO_EXCHANGE=None, #"New York Stock Exchange",  # Exchange from which to pull the market cap for the cutoff
     #########
     # Paths #
     #########

@@ -4,7 +4,7 @@ import re
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Sequence, Union
+from typing import Dict, List, Literal, Optional, Sequence, Union, Protocol
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -369,6 +369,7 @@ class CONFIGURATION_CLASS:
     PERIOD_WINDOW_LENGTH_MONTHS: Optional[int]
     INCLUDE_WHOLE_PERIOD_MODEL: bool
 
+    CREATE_MARKETCAP_PORTFOLIOS: bool
     MARKETCAP_PORTFOLIO_PERCENTILE: Optional[List[float]]
     MARKETCAP_PORTFOLIO_EXCHANGE: Optional[Union["str", Literal["all"]]]
     MARKETCAP_PORTFOLIO_NUMBER_FIRMS: Optional[int]
@@ -380,98 +381,16 @@ class CONFIGURATION_CLASS:
 
     def __post_init__(self):
         # Make sure the data is well structured
-        if self.END_DATE_ANALYSIS < self.START_DATE_ANALYSIS:
-            raise ValueError("END_DATE_ANALYSIS must be after START_DATE_ANALYSIS")
+        policies: List[Policy] = [
+            IndustryClassificationPolicy(),
+            MarketCapPortfolioPolicy(),
+            DatePolicy(),
+            CutoffPoliciy(),
+            StatsPolicy(),
+        ]
+        for policy in policies:
+            policy.validate(self)
 
-        if self.INDUSTRY_CLASSIFICATION_METHOD not in {
-            "Sic_level",
-            "Fama-French_portfolios",
-        }:
-            raise ValueError(
-                "INDUSTRY_CLASSIFICATION_METHOD must be 'Sic_level' or 'Fama-French_portfolios'"
-            )
-
-        if (
-            self.INDUSTRY_CLASSIFICATION_METHOD == "Sic_level"
-            and self.SIC_LEVEL is None
-        ):
-            raise ValueError(
-                "SIC_LEVEL must be provided when INDUSTRY_CLASSIFICATION_METHOD is 'Sic_level'"
-            )
-
-        if self.INDUSTRY_CLASSIFICATION_METHOD == "Fama-French_portfolios":
-            if self.FAMA_FRENCH_INDUSTRY_PORTFOLIOS is None:
-                raise ValueError(
-                    "FAMA_FRENCH_INDUSTRY_PORTFOLIOS must be provided when INDUSTRY_CLASSIFICATION_METHOD is 'Fama-French_portfolios'"
-                )
-            else:
-                if self.FAMA_FRENCH_INDUSTRY_PORTFOLIOS not in {
-                    "Siccodes5",
-                    "Siccodes17",
-                    "Siccodes30",
-                    "Siccodes38",
-                    "Siccodes48",
-                    "Siccodes49",
-                }:
-                    raise ValueError(
-                        "FAMA_FRENCH_INDUSTRY_PORTFOLIOS must be one of {'Siccodes5', 'Siccodes17', 'Siccodes30', 'Siccodes38', 'Siccodes48', 'Siccodes49'}"
-                    )
-
-        if self.CUTOFF_FIRMS_PER_PORTFOLIO < 0:
-            raise ValueError("CUTOFF_FIRMS_PER_PORTFOLIO must be positive")
-
-        if self.MIN_MARKETCAP_FIRM < 0:
-            raise ValueError("MIN_MARKETCAP_FIRM must be non-negative")
-
-        if (
-            self.INDUSTRY_CLASSIFICATION_METHOD == "Sic_level"
-            and self.SIC_LEVEL not in {1, 2, 3, 4}
-        ):
-            raise ValueError("SIC_LEVEL must be one of {1, 2, 3, 4}")
-
-        if self.PORTFOLIO_AGGREGATION_METHOD not in {"MarketCap", "Equal"}:
-            raise ValueError(
-                "PORTFOLIO_AGGREGATION_METHOD must be 'MarketCap' or 'Equal'"
-            )
-
-        if not (self.BREAK_DATE_PERIODS is None) ^ (
-            self.PERIOD_WINDOW_LENGTH_MONTHS is None
-        ):
-            raise ValueError(
-                "Either BREAK_DATE_PERIODS or PERIOD_WINDOW_LENGTH_MONTHS must be provided, but not both"
-            )
-
-        if self.MARKETCAP_PORTFOLIO_NUMBER_FIRMS is not None:
-            if self.MARKETCAP_PORTFOLIO_EXCHANGE is None:
-                raise ValueError(
-                    "If the market cap percentile is defined, then the exchanges to be used must also be defined."
-                )
-            elif (self.MARKETCAP_PORTFOLIO_EXCHANGE not in self.EXCHANGES_TO_KEEP) and (
-                self.MARKETCAP_PORTFOLIO_EXCHANGE != "all"
-            ):
-                raise ValueError(
-                    f"{self.MARKETCAP_PORTFOLIO_EXCHANGE} is an invalid exchange. Must be either 'all' or in {self.EXCHANGES_TO_KEEP}."
-                )
-        elif self.MARKETCAP_PORTFOLIO_PERCENTILE is None:
-            raise ValueError(
-                "Either MARKETCAP_PORTFOLIO_NUMBER_FIRMS or MARKETCAP_PORTFOLIO_PERCENTILE can be provided, but not both"
-            )
-
-        if self.MIN_OCCURANCES_PORTFOLIOS_SUB < 6:
-            raise ValueError(
-                f"MIN_OCCURANCES_PORTFOLIOS_SUB({self.MIN_OCCURANCES_PORTFOLIOS_SUB}) is too low. Needed at least 6 (degrees of freedom + 1)"
-            )
-
-        if self.T_TEST_SIGNIFICANCE_LEVEL <= 0:
-            raise ValueError("T_TEST_SIGNIFICANCE_LEVEL must be positive")
-
-        if (
-            self.THRESHOLD_MISSING_SHARESOUTSTANDING < 0
-            or self.THRESHOLD_MISSING_SHARESOUTSTANDING > 1
-        ):
-            raise ValueError(
-                "THRESHOLD_MISSING_SHARESOUTSTANDING must be between 0 and 1"
-            )
 
     def get_wrds_data(self) -> Dict[str, str]:
         load_dotenv(PROJECT_ROOT / "configs/.env")
@@ -486,6 +405,131 @@ class CONFIGURATION_CLASS:
 
         return {"username": username, "password": password}
 
+
+# Policies for Configuration dataclass validation
+class Policy(Protocol): # Class for defining policies to the static type checker
+    def validate(self, config: CONFIGURATION_CLASS) -> None:
+        ...
+
+class IndustryClassificationPolicy():
+    def validate(self, config: CONFIGURATION_CLASS) -> None:
+        self.isvalid_classification_method(config)
+
+        if config.INDUSTRY_CLASSIFICATION_METHOD == "Sic_level":
+            self.isvalid_sic_level(config)
+        elif config.INDUSTRY_CLASSIFICATION_METHOD == "Fama-French_portfolios":
+            self.isvalid_famafrench_configuration(config)
+        else:
+            raise ValueError(f"Encountered invalid INDUSTRY_CLASSIFICATION_METHOD: {config.INDUSTRY_CLASSIFICATION_METHOD}")
+    
+    def isvalid_classification_method(self, config: CONFIGURATION_CLASS) -> None:
+        if config.INDUSTRY_CLASSIFICATION_METHOD not in {
+            "Sic_level",
+            "Fama-French_portfolios",
+        }:
+            raise ValueError(
+                "INDUSTRY_CLASSIFICATION_METHOD must be 'Sic_level' or 'Fama-French_portfolios'"
+            )
+
+    def isvalid_sic_level(self, config: CONFIGURATION_CLASS) -> None:
+        if config.SIC_LEVEL is None:
+            raise ValueError(
+                "SIC_LEVEL must be provided when INDUSTRY_CLASSIFICATION_METHOD is 'Sic_level'"
+            )
+        elif config.SIC_LEVEL not in {1, 2, 3, 4}:
+            raise ValueError("SIC_LEVEL must be one of {1, 2, 3, 4}")
+        
+    def isvalid_famafrench_configuration(self, config: CONFIGURATION_CLASS) -> None:
+            if config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS is None:
+                raise ValueError(
+                    "FAMA_FRENCH_INDUSTRY_PORTFOLIOS must be provided when INDUSTRY_CLASSIFICATION_METHOD is 'Fama-French_portfolios'"
+                )
+            else:
+                available_portfolios = {
+                    "Siccodes5",
+                    "Siccodes17",
+                    "Siccodes30",
+                    "Siccodes38",
+                    "Siccodes48",
+                    "Siccodes49",
+                }
+                if config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS not in available_portfolios:
+                    raise ValueError(
+                        f"FAMA_FRENCH_INDUSTRY_PORTFOLIOS must be one of {available_portfolios}"
+                    )
+
+class MarketCapPortfolioPolicy():
+    def validate(self, config: CONFIGURATION_CLASS) -> None:
+        if not config.CREATE_MARKETCAP_PORTFOLIOS:
+            return
+        
+        else:
+            if config.MARKETCAP_PORTFOLIO_NUMBER_FIRMS is not None:
+                self.isvalid_marketcap_portfolio_number_firms(config)
+            elif config.MARKETCAP_PORTFOLIO_PERCENTILE is None:
+                raise ValueError(
+                    "Either MARKETCAP_PORTFOLIO_NUMBER_FIRMS or MARKETCAP_PORTFOLIO_PERCENTILE can be provided, but not both"
+                )
+
+    
+    def isvalid_marketcap_portfolio_number_firms(self, config: CONFIGURATION_CLASS) -> None:
+
+        if config.MARKETCAP_PORTFOLIO_EXCHANGE is None:
+            raise ValueError(
+                "If the market cap percentile is defined, then the exchanges to be used must also be defined."
+            )
+        elif (config.MARKETCAP_PORTFOLIO_EXCHANGE not in config.EXCHANGES_TO_KEEP) and (
+            config.MARKETCAP_PORTFOLIO_EXCHANGE != "all"
+        ):
+            raise ValueError(
+                f"{config.MARKETCAP_PORTFOLIO_EXCHANGE} is an invalid exchange. Must be either 'all' or in {config.EXCHANGES_TO_KEEP}."
+            )
+
+class DatePolicy():
+    def validate(self, config: CONFIGURATION_CLASS) -> None:
+        if config.END_DATE_ANALYSIS < config.START_DATE_ANALYSIS:
+            raise ValueError("END_DATE_ANALYSIS must be after START_DATE_ANALYSIS")
+
+        if not (config.BREAK_DATE_PERIODS is None) ^ (
+            config.PERIOD_WINDOW_LENGTH_MONTHS is None
+        ):
+            raise ValueError(
+                "Either BREAK_DATE_PERIODS or PERIOD_WINDOW_LENGTH_MONTHS must be provided, but not both"
+            )
+
+class CutoffPoliciy():
+    def validate(self, config: CONFIGURATION_CLASS) -> None:
+        if config.CUTOFF_FIRMS_PER_PORTFOLIO < 0:
+            raise ValueError("CUTOFF_FIRMS_PER_PORTFOLIO must be positive")
+
+        if config.MIN_MARKETCAP_FIRM < 0:
+            raise ValueError("MIN_MARKETCAP_FIRM must be non-negative")
+
+        if config.PORTFOLIO_AGGREGATION_METHOD not in {"MarketCap", "Equal"}:
+            raise ValueError(
+                "PORTFOLIO_AGGREGATION_METHOD must be 'MarketCap' or 'Equal'"
+            )
+
+        if config.MIN_OCCURANCES_PORTFOLIOS_SUB < 6:
+            raise ValueError(
+                f"MIN_OCCURANCES_PORTFOLIOS_SUB({config.MIN_OCCURANCES_PORTFOLIOS_SUB}) is too low. Needed at least 6 (degrees of freedom + 1)"
+            )
+        
+        if (
+            config.THRESHOLD_MISSING_SHARESOUTSTANDING < 0
+            or config.THRESHOLD_MISSING_SHARESOUTSTANDING > 1
+        ):
+            raise ValueError(
+                "THRESHOLD_MISSING_SHARESOUTSTANDING must be between 0 and 1"
+            )
+
+class StatsPolicy():
+    def validate(self, config: CONFIGURATION_CLASS) -> None:
+        if config.T_TEST_SIGNIFICANCE_LEVEL <= 0:
+            raise ValueError("T_TEST_SIGNIFICANCE_LEVEL must be positive")
+
+        if config.P_THRESHOLD <= 0 or config.P_THRESHOLD >= 1:
+            raise ValueError("P_THRESHOLD must be between 0 and 1")
 
 # Plotting configurations
 @dataclass(frozen=True, slots=True)
