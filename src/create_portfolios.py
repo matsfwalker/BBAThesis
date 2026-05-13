@@ -606,7 +606,9 @@ def create_all_portfolios(
             )
             # Create MarketCap based sub-portfolios if desired in the config
             if config.CREATE_MARKETCAP_PORTFOLIOS:
-                rows.extend(marketcap_subportfolio_information(subset, industry, config))
+                rows.extend(
+                    marketcap_subportfolio_information(subset, industry, config)
+                )
 
     industry_data = pd.DataFrame(rows).set_index(["date", "industry_name"])
 

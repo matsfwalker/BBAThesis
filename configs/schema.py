@@ -391,7 +391,6 @@ class CONFIGURATION_CLASS:
         for policy in policies:
             policy.validate(self)
 
-
     def get_wrds_data(self) -> Dict[str, str]:
         load_dotenv(PROJECT_ROOT / "configs/.env")
         username: Optional[str] = os.getenv("WRDS_USERNAME")
@@ -407,11 +406,11 @@ class CONFIGURATION_CLASS:
 
 
 # Policies for Configuration dataclass validation
-class Policy(Protocol): # Class for defining policies to the static type checker
-    def validate(self, config: CONFIGURATION_CLASS) -> None:
-        ...
+class Policy(Protocol):  # Class for defining policies to the static type checker
+    def validate(self, config: CONFIGURATION_CLASS) -> None: ...
 
-class IndustryClassificationPolicy():
+
+class IndustryClassificationPolicy:
     def validate(self, config: CONFIGURATION_CLASS) -> None:
         self.isvalid_classification_method(config)
 
@@ -420,8 +419,10 @@ class IndustryClassificationPolicy():
         elif config.INDUSTRY_CLASSIFICATION_METHOD == "Fama-French_portfolios":
             self.isvalid_famafrench_configuration(config)
         else:
-            raise ValueError(f"Encountered invalid INDUSTRY_CLASSIFICATION_METHOD: {config.INDUSTRY_CLASSIFICATION_METHOD}")
-    
+            raise ValueError(
+                f"Encountered invalid INDUSTRY_CLASSIFICATION_METHOD: {config.INDUSTRY_CLASSIFICATION_METHOD}"
+            )
+
     def isvalid_classification_method(self, config: CONFIGURATION_CLASS) -> None:
         if config.INDUSTRY_CLASSIFICATION_METHOD not in {
             "Sic_level",
@@ -438,31 +439,32 @@ class IndustryClassificationPolicy():
             )
         elif config.SIC_LEVEL not in {1, 2, 3, 4}:
             raise ValueError("SIC_LEVEL must be one of {1, 2, 3, 4}")
-        
-    def isvalid_famafrench_configuration(self, config: CONFIGURATION_CLASS) -> None:
-            if config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS is None:
-                raise ValueError(
-                    "FAMA_FRENCH_INDUSTRY_PORTFOLIOS must be provided when INDUSTRY_CLASSIFICATION_METHOD is 'Fama-French_portfolios'"
-                )
-            else:
-                available_portfolios = {
-                    "Siccodes5",
-                    "Siccodes17",
-                    "Siccodes30",
-                    "Siccodes38",
-                    "Siccodes48",
-                    "Siccodes49",
-                }
-                if config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS not in available_portfolios:
-                    raise ValueError(
-                        f"FAMA_FRENCH_INDUSTRY_PORTFOLIOS must be one of {available_portfolios}"
-                    )
 
-class MarketCapPortfolioPolicy():
+    def isvalid_famafrench_configuration(self, config: CONFIGURATION_CLASS) -> None:
+        if config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS is None:
+            raise ValueError(
+                "FAMA_FRENCH_INDUSTRY_PORTFOLIOS must be provided when INDUSTRY_CLASSIFICATION_METHOD is 'Fama-French_portfolios'"
+            )
+        else:
+            available_portfolios = {
+                "Siccodes5",
+                "Siccodes17",
+                "Siccodes30",
+                "Siccodes38",
+                "Siccodes48",
+                "Siccodes49",
+            }
+            if config.FAMA_FRENCH_INDUSTRY_PORTFOLIOS not in available_portfolios:
+                raise ValueError(
+                    f"FAMA_FRENCH_INDUSTRY_PORTFOLIOS must be one of {available_portfolios}"
+                )
+
+
+class MarketCapPortfolioPolicy:
     def validate(self, config: CONFIGURATION_CLASS) -> None:
         if not config.CREATE_MARKETCAP_PORTFOLIOS:
             return
-        
+
         else:
             if config.MARKETCAP_PORTFOLIO_NUMBER_FIRMS is not None:
                 self.isvalid_marketcap_portfolio_number_firms(config)
@@ -471,8 +473,9 @@ class MarketCapPortfolioPolicy():
                     "Either MARKETCAP_PORTFOLIO_NUMBER_FIRMS or MARKETCAP_PORTFOLIO_PERCENTILE can be provided, but not both"
                 )
 
-    
-    def isvalid_marketcap_portfolio_number_firms(self, config: CONFIGURATION_CLASS) -> None:
+    def isvalid_marketcap_portfolio_number_firms(
+        self, config: CONFIGURATION_CLASS
+    ) -> None:
 
         if config.MARKETCAP_PORTFOLIO_EXCHANGE is None:
             raise ValueError(
@@ -485,7 +488,8 @@ class MarketCapPortfolioPolicy():
                 f"{config.MARKETCAP_PORTFOLIO_EXCHANGE} is an invalid exchange. Must be either 'all' or in {config.EXCHANGES_TO_KEEP}."
             )
 
-class DatePolicy():
+
+class DatePolicy:
     def validate(self, config: CONFIGURATION_CLASS) -> None:
         if config.END_DATE_ANALYSIS < config.START_DATE_ANALYSIS:
             raise ValueError("END_DATE_ANALYSIS must be after START_DATE_ANALYSIS")
@@ -497,7 +501,8 @@ class DatePolicy():
                 "Either BREAK_DATE_PERIODS or PERIOD_WINDOW_LENGTH_MONTHS must be provided, but not both"
             )
 
-class CutoffPoliciy():
+
+class CutoffPoliciy:
     def validate(self, config: CONFIGURATION_CLASS) -> None:
         if config.CUTOFF_FIRMS_PER_PORTFOLIO < 0:
             raise ValueError("CUTOFF_FIRMS_PER_PORTFOLIO must be positive")
@@ -514,7 +519,7 @@ class CutoffPoliciy():
             raise ValueError(
                 f"MIN_OCCURANCES_PORTFOLIOS_SUB({config.MIN_OCCURANCES_PORTFOLIOS_SUB}) is too low. Needed at least 6 (degrees of freedom + 1)"
             )
-        
+
         if (
             config.THRESHOLD_MISSING_SHARESOUTSTANDING < 0
             or config.THRESHOLD_MISSING_SHARESOUTSTANDING > 1
@@ -523,13 +528,15 @@ class CutoffPoliciy():
                 "THRESHOLD_MISSING_SHARESOUTSTANDING must be between 0 and 1"
             )
 
-class StatsPolicy():
+
+class StatsPolicy:
     def validate(self, config: CONFIGURATION_CLASS) -> None:
         if config.T_TEST_SIGNIFICANCE_LEVEL <= 0:
             raise ValueError("T_TEST_SIGNIFICANCE_LEVEL must be positive")
 
         if config.P_THRESHOLD <= 0 or config.P_THRESHOLD >= 1:
             raise ValueError("P_THRESHOLD must be between 0 and 1")
+
 
 # Plotting configurations
 @dataclass(frozen=True, slots=True)

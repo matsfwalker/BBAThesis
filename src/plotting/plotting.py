@@ -589,9 +589,8 @@ class PLOTTER:
         plt.title(f"Period-wise Changes in {beta}")
         plt.xlabel(f"Change in {beta}")
         plt.ylabel("Frequency")
-        
+
         if save:
             plt.savefig(self.plot_folder / f"histogram_changes_{beta}.png")
 
         plt.show()
-
