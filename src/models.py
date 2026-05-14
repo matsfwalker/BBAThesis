@@ -96,7 +96,10 @@ def extract_factor_loadings(
     # Helper function for linear regression
     def lin_reg(X: pd.DataFrame, y: pd.Series) -> pd.Series:
         # Fit model
-        model = sm.OLS(y, X, missing="drop").fit()
+        model = sm.OLS(y, X, missing="drop").fit(
+            cov_type="HAC",             # Use Newey-West standard errors to account for autocorrelation and heteroskedasticity
+            cov_kwds={"maxlags": 3}
+        )
 
         values = []
         index = []
@@ -107,7 +110,7 @@ def extract_factor_loadings(
             index.extend(
                 [
                     ("Beta", name),
-                    ("Stdev", name),
+                    ("StdError", name),
                     ("Tstat", name),
                     ("Pvalue", name),
                 ]
