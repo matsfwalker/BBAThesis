@@ -97,8 +97,8 @@ def extract_factor_loadings(
     def lin_reg(X: pd.DataFrame, y: pd.Series) -> pd.Series:
         # Fit model
         model = sm.OLS(y, X, missing="drop").fit(
-            cov_type="HAC",             # Use Newey-West standard errors to account for autocorrelation and heteroskedasticity
-            cov_kwds={"maxlags": 3}
+            cov_type="HAC",  # Use Newey-West standard errors to account for autocorrelation and heteroskedasticity
+            cov_kwds={"maxlags": 3},
         )
 
         values = []

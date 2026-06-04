@@ -2,11 +2,12 @@ import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import List, Union, Literal, Tuple, Optional, Any
+from typing import List, Union, Literal, Tuple, Optional, Any, cast
 from configs import PLOTTING_CONFIGURATIONS_CLASS, ANALYSIS_PATHS
 from .style import set_plot_style, get_palette, colour_cycle, colour_map
 from .utils import as_float
 import seaborn as sns
+from pathlib import Path
 
 
 class PLOTTER:
@@ -16,7 +17,7 @@ class PLOTTER:
         figsize: Optional[Tuple[int, int]] = None,
     ) -> None:
         self.config: PLOTTING_CONFIGURATIONS_CLASS = config
-        self.plot_folder: str = ANALYSIS_PATHS.RESULT_IMAGES_DIR
+        self.plot_folder: Path = ANALYSIS_PATHS.RESULT_IMAGES_DIR
 
         self.figsize = figsize if figsize is not None else (10, 6)
         self.fontsize_header: float = 18.0
@@ -206,7 +207,7 @@ class PLOTTER:
                 "factor_loadings[asset_identifier] returns a pd.DataFrame. Make sure the asset_identifier is a correct name of a portfolio."
             )
 
-        stdevs: pd.Series = factor_loadings_asset.loc["Stdev"]
+        stderrs: pd.Series = factor_loadings_asset.loc["StdError"]
         betas: pd.Series = factor_loadings_asset.loc["Beta"]
 
         if factors_to_plot == "all":
@@ -220,11 +221,11 @@ class PLOTTER:
         # Extract the info for each factor
         for factor in factors_to_plot:
             beta: float = betas[factor]
-            stdev: float = stdevs[factor]
+            stderr: float = stderrs[factor]
 
-            if beta is not None and stdev is not None:
-                ci_lower: float = beta - confidence_interval_stdev * stdev
-                ci_upper: float = beta + confidence_interval_stdev * stdev
+            if beta is not None and stderr is not None:
+                ci_lower: float = beta - confidence_interval_stdev * stderr
+                ci_upper: float = beta + confidence_interval_stdev * stderr
 
                 factor_loadings_data_df.loc[factor] = [beta, ci_lower, ci_upper]
 
@@ -465,14 +466,14 @@ class PLOTTER:
                 "factor_loadings_over_time_identifier is not of right type. Issue with factor_loadings_over_time[asset_identifier]"
             )
 
-        stdevs: Union[pd.DataFrame, pd.Series] = (
-            factor_loadings_over_time_identifier.loc["Stdev"]
+        stderrs: Union[pd.DataFrame, pd.Series] = (
+            factor_loadings_over_time_identifier.loc["StdError"]
         )
         betas: Union[pd.DataFrame, pd.Series] = (
             factor_loadings_over_time_identifier.loc["Beta"]
         )
 
-        if not isinstance(stdevs, pd.DataFrame) or not isinstance(betas, pd.DataFrame):
+        if not isinstance(stderrs, pd.DataFrame) or not isinstance(betas, pd.DataFrame):
             raise TypeError(
                 "factor_loadings_over_time is probably not specified correctly."
             )
@@ -499,9 +500,9 @@ class PLOTTER:
             # Plot each period
             for period in periods:
                 beta: float = as_float(betas.at[factor, period])
-                stdev: float = as_float(stdevs.at[factor, period])
-                ci_lower: float = beta - confidence_interval_stdev * stdev
-                ci_upper: float = beta + confidence_interval_stdev * stdev
+                stderr: float = as_float(stderrs.at[factor, period])
+                ci_lower: float = beta - confidence_interval_stdev * stderr
+                ci_upper: float = beta + confidence_interval_stdev * stderr
 
                 color = next(color_cycler)
 
@@ -581,16 +582,18 @@ class PLOTTER:
 
         # Filter the data for the specific beta
         beta_data = df.loc[beta, :]
+        values: np.ndarray = cast(np.ndarray, beta_data.values)
+        flat_vals: np.ndarray = values.flatten()
 
         # Create the histogram plot
         plt.figure(figsize=self.figsize)
-        sns.histplot(beta_data.values.flatten(), bins=30, kde=True)
+        sns.histplot(flat_vals, bins=30, kde=True)
         plt.xlim(x_start, x_end)  # set your desired range here
         plt.title(f"Period-wise Changes in {beta}")
         plt.xlabel(f"Change in {beta}")
         plt.ylabel("Frequency")
 
         if save:
-            plt.savefig(self.plot_folder / f"histogram_changes_{beta}.png")
+            plt.savefig(self.plot_folder / Path(f"histogram_changes_{beta}.png"))
 
         plt.show()

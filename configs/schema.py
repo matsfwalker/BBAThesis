@@ -379,7 +379,7 @@ class CONFIGURATION_CLASS:
     T_TEST_SIGNIFICANCE_LEVEL: float
     P_THRESHOLD: float
 
-    def __post_init__(self):
+    def __post_init__(self)->None:
         # Make sure the data is well structured
         policies: List[Policy] = [
             IndustryClassificationPolicy(),
